@@ -7,14 +7,25 @@ Phase 1 establishes the full planned shared-calendar experience with a deliberat
 React, TypeScript, Vite, Tailwind CSS, FullCalendar, and Supabase stack. External synchronization
 with Google Calendar, Apple Calendar, and Outlook Calendar is outside Phase 1 scope.
 
-## Milestone 0 Status
+## Milestone Status
 
 Milestone 0 establishes the repository and workspace foundation only. The current application
 screen identifies the project and confirms that the workspace foundation is operational.
 
-No authentication, Supabase backend, database schema, couple membership, calendar UI, event
-workflow, recurrence, notification, PWA installation behavior, external calendar synchronization,
-or deployment functionality is implemented in this milestone.
+Milestone 1 establishes the product, UX, architecture, data, security, and roadmap contracts that
+later milestones must implement. It does not implement runtime product features.
+
+No authentication, Supabase backend, database schema or migrations, couple membership, calendar UI,
+event workflow, recurrence, notification, PWA installation behavior, external calendar
+synchronization, or deployment functionality is implemented yet.
+
+## Milestone 1 Contracts
+
+- [Product specification](docs/PRODUCT_SPEC.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Data model](docs/DATA_MODEL.md)
+- [Security design](docs/SECURITY.md)
+- [Roadmap](docs/ROADMAP.md)
 
 ## Prerequisites
 
@@ -35,7 +46,7 @@ Start the Vite development server:
 npm run dev
 ```
 
-Run the full Milestone 0 validation gate:
+Run the full validation gate:
 
 ```bash
 npm run validate
