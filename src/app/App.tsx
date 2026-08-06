@@ -1,9 +1,5 @@
-import { FoundationStatus } from '../components/FoundationStatus';
+import { AppShell } from './AppShell';
 
 export default function App() {
-  return (
-    <main className="foundation-screen" aria-labelledby="foundation-title">
-      <FoundationStatus />
-    </main>
-  );
+  return <AppShell />;
 }

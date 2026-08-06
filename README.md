@@ -9,11 +9,15 @@ with Google Calendar, Apple Calendar, and Outlook Calendar is outside Phase 1 sc
 
 ## Milestone Status
 
-Milestone 0 establishes the repository and workspace foundation only. The current application
-screen identifies the project and confirms that the workspace foundation is operational.
+Milestone 0 is complete and owner-approved.
 
-Milestone 1 establishes the product, UX, architecture, data, security, and roadmap contracts that
-later milestones must implement. It does not implement runtime product features.
+Milestone 1 is complete and owner-approved. It established the product, UX, architecture, data,
+security, and roadmap contracts that later milestones must implement.
+
+Milestone 2 is implemented and awaiting owner review. It establishes the responsive application
+shell, mobile-first design tokens, accessible placeholder navigation, reusable UI primitives,
+representative states, and automated shell/component tests. It does not implement product
+workflows.
 
 No authentication, Supabase backend, database schema or migrations, couple membership, calendar UI,
 event workflow, recurrence, notification, PWA installation behavior, external calendar
@@ -26,6 +30,7 @@ synchronization, or deployment functionality is implemented yet.
 - [Data model](docs/DATA_MODEL.md)
 - [Security design](docs/SECURITY.md)
 - [Roadmap](docs/ROADMAP.md)
+- [Milestone 2 acceptance notes](docs/MILESTONE_2_ACCEPTANCE.md)
 
 ## Prerequisites
 
@@ -81,11 +86,12 @@ later milestones.
 
 ```text
 src/
-  app/         Root application component and app-level tests.
-  components/  Small reusable UI components.
-  lib/         Purpose-specific shared project metadata.
-  styles/      Global stylesheet and Tailwind entry point.
-  test/        Test environment setup.
+  app/          Root application shell, navigation metadata, and app-level tests.
+  components/   Layout and UI primitives.
+  icons/        Minimal internal SVG icons.
+  lib/          Purpose-specific shared utilities and project metadata.
+  styles/       Global stylesheet, Tailwind entry point, and design tokens.
+  test/         Test environment setup.
 ```
 
 Additional root files configure Vite, TypeScript, ESLint, Prettier, npm scripts, environment

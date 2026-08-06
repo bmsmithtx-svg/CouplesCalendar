@@ -5,9 +5,9 @@
 This roadmap is the authoritative Phase 1 sequence for CouplesCalendar. Milestones must not be
 reordered, combined, skipped, renamed, or implemented early without owner approval.
 
-Milestone 0 is complete and owner-approved. Milestone 1 is the only currently authorized milestone.
-Milestones 2 through 11 are not started and are unauthorized until the prior milestone is reviewed
-and approved.
+Milestone 0 is complete and owner-approved. Milestone 1 is complete and owner-approved. Milestone 2
+is implemented and awaiting owner review. Milestones 3 through 11 are not started and are
+unauthorized until the prior milestone is reviewed and approved.
 
 ## Locked Sequence
 
@@ -61,7 +61,7 @@ Dependencies:
 
 ### 1. Product Contract, UX, Architecture, and Data Design
 
-Status: currently authorized.
+Status: complete and owner-approved.
 
 Objective: create the authoritative product, UX, architecture, data, security, and roadmap contracts
 that later milestones must implement.
@@ -98,7 +98,7 @@ Dependencies:
 
 ### 2. Application Shell and Mobile-First Design System
 
-Status: not started; unauthorized until Milestone 1 is reviewed and approved.
+Status: implemented and awaiting owner review.
 
 Objective: implement the responsive application shell and reusable design system foundations without
 feature workflows.
@@ -419,5 +419,5 @@ Dependencies:
 
 ## Scope Guard
 
-Only the current authorized milestone may be implemented. Completing this roadmap document does not
-authorize Milestone 2. No future milestone begins until the prior milestone is reviewed and approved.
+Only the current authorized milestone may be implemented. Milestone 2 implementation does not
+authorize Milestone 3. No future milestone begins until the prior milestone is reviewed and approved.
