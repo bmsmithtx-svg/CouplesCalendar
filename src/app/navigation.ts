@@ -12,9 +12,9 @@ export const destinationConfig: Record<DestinationId, DestinationConfig> = {
   calendar: {
     id: 'calendar',
     label: 'Calendar',
-    heading: 'Calendar shell',
+    heading: 'Calendar workspace',
     description:
-      'A placeholder calendar surface for reviewing layout, empty states, and future navigation.',
+      'Authenticated placeholder surface reserved for shared-calendar viewing in a later milestone.',
   },
   search: {
     id: 'search',
@@ -29,7 +29,7 @@ export const destinationConfig: Record<DestinationId, DestinationConfig> = {
     label: 'Add event',
     heading: 'Add event placeholder',
     description:
-      'An accessible action target for the later event workflow. No event form is implemented here.',
+      'An accessible action target reserved for the later event workflow. No event form is implemented here.',
   },
   categories: {
     id: 'categories',
@@ -41,9 +41,8 @@ export const destinationConfig: Record<DestinationId, DestinationConfig> = {
   settings: {
     id: 'settings',
     label: 'Settings',
-    heading: 'Settings shell',
-    description:
-      'A placeholder settings destination without account, profile, or couple workflows.',
+    heading: 'Profile settings',
+    description: 'Manage your user-owned profile and current authentication session.',
   },
 };
 

@@ -14,14 +14,17 @@ Milestone 0 is complete and owner-approved.
 Milestone 1 is complete and owner-approved. It established the product, UX, architecture, data,
 security, and roadmap contracts that later milestones must implement.
 
-Milestone 2 is implemented and awaiting owner review. It establishes the responsive application
-shell, mobile-first design tokens, accessible placeholder navigation, reusable UI primitives,
-representative states, and automated shell/component tests. It does not implement product
-workflows.
+Milestone 2 is complete and owner-approved. It establishes the responsive application shell,
+mobile-first design tokens, accessible placeholder navigation, reusable UI primitives,
+representative states, and automated shell/component tests.
 
-No authentication, Supabase backend, database schema or migrations, couple membership, calendar UI,
-event workflow, recurrence, notification, PWA installation behavior, external calendar
-synchronization, or deployment functionality is implemented yet.
+Milestone 3 is implemented and awaiting owner review. It adds Supabase Auth integration, guarded
+session startup, sign-up/sign-in/sign-out/password-reset surfaces, user-owned profile setup and
+editing, and the RLS-protected `profiles` migration.
+
+No couple membership, invitations, calendar data, event workflow, recurrence, notification, PWA
+installation behavior, external calendar synchronization, or deployment functionality is implemented
+yet.
 
 ## Milestone 1 Contracts
 
@@ -71,8 +74,7 @@ npm run preview
 
 ## Environment Variables
 
-Copy `.env.example` to a local `.env` file when later milestones need browser-safe Supabase
-configuration:
+Copy `.env.example` to a local `.env` file and provide browser-safe Supabase configuration:
 
 ```text
 VITE_SUPABASE_URL=

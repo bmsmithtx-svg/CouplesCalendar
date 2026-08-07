@@ -10,6 +10,8 @@ import { ContextPanel } from '../components/layout/ContextPanel';
 import { BottomNavigation, SidebarNavigation } from '../components/layout/Navigation';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Surface } from '../components/layout/Surface';
+import { useAuth } from '../features/auth/AuthContext';
+import { ProfileSettings } from '../features/profiles/ProfileSettings';
 import { PlusIcon, SearchIcon } from '../icons/AppIcons';
 import { projectMetadata } from '../lib/projectMetadata';
 import {
@@ -28,10 +30,15 @@ const fieldStateOptions = [
 ] as const;
 
 export function AppShell() {
+  const { signOut, state } = useAuth();
   const [activeDestination, setActiveDestination] = useState<DestinationId>('calendar');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const active = getDestination(activeDestination);
+
+  if (state.status !== 'authenticated') {
+    return null;
+  }
 
   return (
     <div className="cc-app-shell">
@@ -49,6 +56,9 @@ export function AppShell() {
           title={active.heading}
           actions={
             <>
+              <span className="cc-account-chip" aria-label="Signed-in profile">
+                {state.profile.displayName}
+              </span>
               <Button
                 onClick={() => {
                   setIsSheetOpen(true);
@@ -59,11 +69,12 @@ export function AppShell() {
               </Button>
               <Button
                 onClick={() => {
-                  setIsDialogOpen(true);
+                  void signOut();
                 }}
-                variant="primary"
+                isLoading={state.operation === 'signing-out'}
+                variant="ghost"
               >
-                Open dialog preview
+                Sign out
               </Button>
             </>
           }
@@ -85,20 +96,23 @@ export function AppShell() {
 
       <ContextPanel title="Review context">
         <div className="cc-context-panel__stack">
-          <StatusBanner title="Shell state" tone="success">
-            The selected placeholder updates without routing or protected data.
+          <StatusBanner title="Signed in" tone="success">
+            {state.session.user.email ?? 'Supabase account'} is authenticated.
           </StatusBanner>
           <div className="cc-context-card">
-            <p className="cc-context-card__label">Current destination</p>
-            <p className="cc-context-card__value">{active.label}</p>
+            <p className="cc-context-card__label">Display name</p>
+            <p className="cc-context-card__value">{state.profile.displayName}</p>
           </div>
           <div className="cc-context-card">
-            <p className="cc-context-card__label">Detail panel primitive</p>
+            <p className="cc-context-card__label">Default timezone</p>
+            <p className="cc-context-card__text">{state.profile.defaultTimezone}</p>
+          </div>
+          <div className="cc-context-card">
+            <p className="cc-context-card__label">Couple workspace</p>
             <p className="cc-context-card__text">
-              Reserved for future agenda or event details when later milestones authorize data.
+              Couple creation and membership remain reserved for Milestone 4.
             </p>
           </div>
-          <SkeletonStack count={2} label="Context panel loading placeholder" />
         </div>
       </ContextPanel>
 
@@ -265,8 +279,8 @@ function DestinationBody({
         title="Event creation is not implemented"
       >
         <p>
-          The Add event target is reachable and accessible, but Milestone 2 does not open a real
-          event form.
+          The Add event target remains reachable, but event creation belongs to a later milestone
+          after couple membership and calendar data exist.
         </p>
       </EmptyState>
     );
@@ -286,32 +300,35 @@ function DestinationBody({
   }
 
   if (activeDestination === 'settings') {
-    return (
-      <StatusBanner title="Settings are placeholders" tone="warning">
-        Account, profile, couple, invitation, and notification settings are reserved for later
-        milestones.
-      </StatusBanner>
-    );
+    return <ProfileSettings />;
   }
 
   return (
-    <div className="cc-calendar-preview" aria-label="Calendar placeholder preview">
-      <div className="cc-calendar-preview__toolbar">
-        <Button variant="ghost">Previous</Button>
-        <p className="cc-calendar-preview__month">August 2026 placeholder</p>
-        <Button variant="ghost">Next</Button>
-      </div>
-      <div className="cc-calendar-preview__weekdays" aria-hidden="true">
-        {weekdayLabels.map((label) => (
-          <span key={label}>{label}</span>
-        ))}
-      </div>
-      <div className="cc-calendar-preview__grid">
-        {Array.from({ length: 35 }, (_, index) => (
-          <span className="cc-calendar-preview__day" key={index}>
-            {index >= 5 && index < 31 ? index - 4 : ''}
-          </span>
-        ))}
+    <div className="cc-placeholder-grid">
+      <EmptyState title="No couple workspace yet">
+        <p>
+          Authentication and profile setup are active. Couple creation, invitations, and shared
+          calendar data are intentionally reserved for later milestones.
+        </p>
+      </EmptyState>
+      <div className="cc-calendar-preview" aria-label="Calendar placeholder preview">
+        <div className="cc-calendar-preview__toolbar">
+          <Button variant="ghost">Previous</Button>
+          <p className="cc-calendar-preview__month">August 2026 placeholder</p>
+          <Button variant="ghost">Next</Button>
+        </div>
+        <div className="cc-calendar-preview__weekdays" aria-hidden="true">
+          {weekdayLabels.map((label) => (
+            <span key={label}>{label}</span>
+          ))}
+        </div>
+        <div className="cc-calendar-preview__grid">
+          {Array.from({ length: 35 }, (_, index) => (
+            <span className="cc-calendar-preview__day" key={index}>
+              {index >= 5 && index < 31 ? index - 4 : ''}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -413,7 +430,7 @@ function StatePreview({
           }}
           title="Empty placeholder"
         >
-          <p>No real calendar, account, or couple data is present in Milestone 2.</p>
+          <p>No couple workspace, real calendar data, or event data is present yet.</p>
         </EmptyState>
       </div>
     </Surface>
