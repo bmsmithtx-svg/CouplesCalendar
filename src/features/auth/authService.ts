@@ -1,15 +1,62 @@
-import type { Session, SupabaseClient } from '@supabase/supabase-js';
-
-import type { Database } from '../../lib/supabase/database.types';
 import type {
   AuthClient,
   AuthCredentials,
+  AuthEvent,
   AuthResult,
   AuthSession,
   InitialSessionResult,
 } from './authTypes';
 
-function mapSession(session: Session): AuthSession {
+type SupabaseError = {
+  message: string;
+};
+
+type SupabaseSession = {
+  expires_at?: number | null;
+  user: {
+    email?: string | null;
+    id: string;
+  };
+};
+
+type SupabaseAuthLike = {
+  auth: {
+    getSession: () => Promise<{
+      data: { session: SupabaseSession | null };
+      error: SupabaseError | null;
+    }>;
+    onAuthStateChange: (callback: (event: string, session: SupabaseSession | null) => void) => {
+      data: {
+        subscription: {
+          unsubscribe: () => void;
+        };
+      };
+    };
+    resetPasswordForEmail: (
+      email: string,
+      options?: { redirectTo: string },
+    ) => Promise<{ error: SupabaseError | null }>;
+    signInWithPassword: (credentials: AuthCredentials) => Promise<{
+      data: { session: SupabaseSession };
+      error: SupabaseError | null;
+    }>;
+    signOut: () => Promise<{ error: SupabaseError | null }>;
+    signUp: (credentials: {
+      email: string;
+      options?: { emailRedirectTo: string };
+      password: string;
+    }) => Promise<{
+      data: { session: SupabaseSession | null };
+      error: SupabaseError | null;
+    }>;
+  };
+};
+
+function throwSupabaseError(error: SupabaseError): never {
+  throw new Error(error.message);
+}
+
+function mapSession(session: SupabaseSession): AuthSession {
   return {
     expiresAt: session.expires_at ?? null,
     user: {
@@ -19,7 +66,7 @@ function mapSession(session: Session): AuthSession {
   };
 }
 
-function isExpired(session: Session) {
+function isExpired(session: SupabaseSession) {
   if (!session.expires_at) {
     return false;
   }
@@ -35,10 +82,16 @@ function getEmailRedirectTo() {
   return window.location.origin;
 }
 
-export function createSupabaseAuthClient(client: SupabaseClient<Database>): AuthClient {
+function toAuthEvent(event: string): AuthEvent {
+  return event as AuthEvent;
+}
+
+export function createSupabaseAuthClient(client: unknown): AuthClient {
+  const supabase = client as SupabaseAuthLike;
+
   return {
     async getInitialSession(): Promise<InitialSessionResult> {
-      const { data, error } = await client.auth.getSession();
+      const { data, error } = await supabase.auth.getSession();
 
       if (error) {
         return {
@@ -66,8 +119,8 @@ export function createSupabaseAuthClient(client: SupabaseClient<Database>): Auth
     },
 
     onAuthStateChange(callback) {
-      const { data } = client.auth.onAuthStateChange((event, session) => {
-        callback(event, session ? mapSession(session) : null);
+      const { data } = supabase.auth.onAuthStateChange((event, session) => {
+        callback(toAuthEvent(event), session ? mapSession(session) : null);
       });
 
       return {
@@ -79,24 +132,24 @@ export function createSupabaseAuthClient(client: SupabaseClient<Database>): Auth
 
     async resetPassword(email: string) {
       const emailRedirectTo = getEmailRedirectTo();
-      const { error } = await client.auth.resetPasswordForEmail(
+      const { error } = await supabase.auth.resetPasswordForEmail(
         email,
         emailRedirectTo ? { redirectTo: emailRedirectTo } : undefined,
       );
 
       if (error) {
-        throw error;
+        throwSupabaseError(error);
       }
     },
 
     async signIn({ email, password }: AuthCredentials): Promise<AuthResult> {
-      const { data, error } = await client.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        throw error;
+        throwSupabaseError(error);
       }
 
       return {
@@ -106,16 +159,16 @@ export function createSupabaseAuthClient(client: SupabaseClient<Database>): Auth
     },
 
     async signOut() {
-      const { error } = await client.auth.signOut();
+      const { error } = await supabase.auth.signOut();
 
       if (error) {
-        throw error;
+        throwSupabaseError(error);
       }
     },
 
     async signUp({ email, password }: AuthCredentials): Promise<AuthResult> {
       const emailRedirectTo = getEmailRedirectTo();
-      const { data, error } = await client.auth.signUp(
+      const { data, error } = await supabase.auth.signUp(
         emailRedirectTo
           ? {
               email,
@@ -129,7 +182,7 @@ export function createSupabaseAuthClient(client: SupabaseClient<Database>): Auth
       );
 
       if (error) {
-        throw error;
+        throwSupabaseError(error);
       }
 
       if (!data.session) {

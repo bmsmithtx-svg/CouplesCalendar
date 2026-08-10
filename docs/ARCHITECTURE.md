@@ -368,3 +368,21 @@ call feature services or hooks that use centralized data-access code.
   needed.
 - Offline state is visible and writes do not pretend to succeed offline.
 - PWA caches avoid authenticated Supabase responses.
+
+## Milestone 4 Runtime Shape
+
+Milestone 4 introduces `src/features/couples` as the relationship feature boundary. The authenticated
+app now loads relationship state after profile readiness through a dedicated couple provider and a
+central Supabase repository. The state model distinguishes:
+
+- authenticated/profile complete/no couple;
+- valid incoming invitation;
+- invalid, expired, revoked, already-used, full-couple, and already-coupled invitation states;
+- solo couple awaiting invitation creation;
+- pending outgoing invitation;
+- established two-member couple;
+- recoverable loading and error states.
+
+The React client uses controlled RPCs for security-critical writes and table reads only for
+RLS-authorized, non-secret relationship metadata. Calendar viewing and event data remain deferred to
+Milestone 5 and later.

@@ -247,3 +247,28 @@ that does not expose real private calendar contents.
 - Realtime subscriptions do not expose another couple's data.
 - PWA caches do not store authenticated Supabase responses.
 - Offline writes do not appear to succeed.
+
+## Milestone 4 Security Implementation Notes
+
+Milestone 4 implements the relationship boundary with database constraints, RLS, and controlled
+RPCs:
+
+- Browser configuration remains limited to `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+- No service-role key, database password, invitation token hash, or private secret is exposed to the
+  browser.
+- `couple_invitations.token_hash` is not granted through table `SELECT`; active members can read
+  only non-secret invitation metadata.
+- `create_couple`, `create_couple_invitation`, `accept_couple_invitation`,
+  `revoke_couple_invitation`, `leave_couple`, and `delete_couple` are `SECURITY DEFINER` functions
+  with `set search_path = public, pg_temp`.
+- Invitation acceptance locks the couple and invitation before inserting membership and marking the
+  invitation accepted.
+- Partial unique indexes enforce one active couple per user and one active member per couple slot.
+- A membership-limit trigger rejects a third membership row for the same couple.
+- Direct forged inserts or updates against couple membership and invitation rows are denied because
+  no direct write grants or write policies are provided.
+- Invalid, expired, revoked, already-used, full-couple, and already-coupled invitation states are
+  returned as safe status codes instead of raw database errors.
+
+Milestone 4 has no realtime channels, service worker, notification delivery, or calendar-event data
+surface to secure. Those controls remain documented for later milestones.

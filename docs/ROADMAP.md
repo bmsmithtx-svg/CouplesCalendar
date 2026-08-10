@@ -6,8 +6,9 @@ This roadmap is the authoritative Phase 1 sequence for CouplesCalendar. Mileston
 reordered, combined, skipped, renamed, or implemented early without owner approval.
 
 Milestone 0 is complete and owner-approved. Milestone 1 is complete and owner-approved. Milestone 2
-is complete and owner-approved. Milestone 3 is implemented and awaiting owner review. Milestones 4
-through 11 are not started and are unauthorized until the prior milestone is reviewed and approved.
+is complete and owner-approved. Milestone 3 is complete and owner-approved. Milestone 4 is
+implemented and awaiting owner review. Milestones 5 through 11 are not started and are unauthorized
+until the prior milestone is reviewed and approved.
 
 ## Locked Sequence
 
@@ -132,7 +133,7 @@ Dependencies:
 
 ### 3. Authentication and User Profiles
 
-Status: implemented and awaiting owner review.
+Status: complete and owner-approved.
 
 Objective: implement Supabase Auth integration and minimum user profile setup.
 
@@ -163,7 +164,7 @@ Dependencies:
 
 ### 4. Couple Creation, Invitation, and Membership Security
 
-Status: not started; unauthorized until Milestone 3 is reviewed and approved.
+Status: implemented and awaiting owner review.
 
 Objective: implement the exactly-two-member couple workspace lifecycle.
 
@@ -419,5 +420,6 @@ Dependencies:
 
 ## Scope Guard
 
-Only the current authorized milestone may be implemented. Milestone 3 implementation does not
-authorize Milestone 4. No future milestone begins until the prior milestone is reviewed and approved.
+Only the current authorized milestone may be implemented. Milestone 4 implementation does not
+authorize Milestone 5. No future milestone begins until the prior milestone is reviewed and
+approved.

@@ -18,13 +18,16 @@ Milestone 2 is complete and owner-approved. It establishes the responsive applic
 mobile-first design tokens, accessible placeholder navigation, reusable UI primitives,
 representative states, and automated shell/component tests.
 
-Milestone 3 is implemented and awaiting owner review. It adds Supabase Auth integration, guarded
-session startup, sign-up/sign-in/sign-out/password-reset surfaces, user-owned profile setup and
-editing, and the RLS-protected `profiles` migration.
+Milestone 3 is complete and owner-approved. It adds Supabase Auth integration, guarded session
+startup, sign-up/sign-in/sign-out/password-reset surfaces, user-owned profile setup and editing, and
+the RLS-protected `profiles` migration.
 
-No couple membership, invitations, calendar data, event workflow, recurrence, notification, PWA
-installation behavior, external calendar synchronization, or deployment functionality is implemented
-yet.
+Milestone 4 is implemented and awaiting owner review. It adds the couple workspace schema,
+membership slots, one-time invitation RPCs, RLS-protected relationship reads, and the authenticated
+couple creation/invitation UI.
+
+Calendar data, event workflow, recurrence, notification, PWA installation behavior, external
+calendar synchronization, and deployment functionality are not implemented yet.
 
 ## Milestone 1 Contracts
 
@@ -81,8 +84,8 @@ VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 ```
 
-Do not commit real `.env` files or secrets. Supabase project creation and integration belong to
-later milestones.
+Do not commit real `.env` files or secrets. Apply the committed Supabase migrations to the target
+Supabase project before exercising authenticated profile or couple workflows.
 
 ## Repository Structure
 
@@ -90,6 +93,7 @@ later milestones.
 src/
   app/          Root application shell, navigation metadata, and app-level tests.
   components/   Layout and UI primitives.
+  features/     Auth, profile, and couple workflow modules.
   icons/        Minimal internal SVG icons.
   lib/          Purpose-specific shared utilities and project metadata.
   styles/       Global stylesheet, Tailwind entry point, and design tokens.

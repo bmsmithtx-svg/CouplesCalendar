@@ -13,8 +13,7 @@ export const destinationConfig: Record<DestinationId, DestinationConfig> = {
     id: 'calendar',
     label: 'Calendar',
     heading: 'Calendar workspace',
-    description:
-      'Authenticated placeholder surface reserved for shared-calendar viewing in a later milestone.',
+    description: 'Create and manage the private couple workspace before shared-calendar viewing.',
   },
   search: {
     id: 'search',
@@ -42,7 +41,7 @@ export const destinationConfig: Record<DestinationId, DestinationConfig> = {
     id: 'settings',
     label: 'Settings',
     heading: 'Profile settings',
-    description: 'Manage your user-owned profile and current authentication session.',
+    description: 'Manage your profile, couple workspace, and current authentication session.',
   },
 };
 

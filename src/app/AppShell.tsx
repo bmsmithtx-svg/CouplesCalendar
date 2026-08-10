@@ -11,6 +11,11 @@ import { BottomNavigation, SidebarNavigation } from '../components/layout/Naviga
 import { PageHeader } from '../components/layout/PageHeader';
 import { Surface } from '../components/layout/Surface';
 import { useAuth } from '../features/auth/AuthContext';
+import {
+  CoupleContextSummary,
+  CoupleHome,
+  CoupleSettings,
+} from '../features/couples/CoupleWorkspace';
 import { ProfileSettings } from '../features/profiles/ProfileSettings';
 import { PlusIcon, SearchIcon } from '../icons/AppIcons';
 import { projectMetadata } from '../lib/projectMetadata';
@@ -107,12 +112,7 @@ export function AppShell() {
             <p className="cc-context-card__label">Default timezone</p>
             <p className="cc-context-card__text">{state.profile.defaultTimezone}</p>
           </div>
-          <div className="cc-context-card">
-            <p className="cc-context-card__label">Couple workspace</p>
-            <p className="cc-context-card__text">
-              Couple creation and membership remain reserved for Milestone 4.
-            </p>
-          </div>
+          <CoupleContextSummary />
         </div>
       </ContextPanel>
 
@@ -200,48 +200,56 @@ function DestinationPreview({
   onSheetOpen: () => void;
 }) {
   const active = getDestination(activeDestination);
+  const isCalendarDestination = activeDestination === 'calendar';
 
   return (
     <div className="cc-main__stack">
-      <Surface
-        actions={
-          <>
-            <Button
-              onClick={() => {
-                onSelectDestination('search');
-              }}
-              variant="secondary"
-            >
-              <SearchIcon />
-              Search placeholder
-            </Button>
-            <Button
-              onClick={() => {
-                onSelectDestination('add');
-              }}
-              variant="primary"
-            >
-              <PlusIcon />
-              Add event
-            </Button>
-          </>
-        }
-        description={active.description}
-        title={active.heading}
-      >
-        <h2 className="sr-only" id="shell-destination-title">
-          {active.heading}
-        </h2>
-        <DestinationBody
-          activeDestination={activeDestination}
-          onSelectDestination={onSelectDestination}
-        />
-      </Surface>
+      <h2 className="sr-only" id="shell-destination-title">
+        {active.heading}
+      </h2>
 
-      <div className="cc-two-column">
-        <DesignSystemPreview onDialogOpen={onDialogOpen} onSheetOpen={onSheetOpen} />
-        <StatePreview onSelectDestination={onSelectDestination} />
-      </div>
+      {isCalendarDestination ? (
+        <CoupleHome />
+      ) : (
+        <Surface
+          actions={
+            <>
+              <Button
+                onClick={() => {
+                  onSelectDestination('search');
+                }}
+                variant="secondary"
+              >
+                <SearchIcon />
+                Search placeholder
+              </Button>
+              <Button
+                onClick={() => {
+                  onSelectDestination('add');
+                }}
+                variant="primary"
+              >
+                <PlusIcon />
+                Add event
+              </Button>
+            </>
+          }
+          description={active.description}
+          title={active.heading}
+        >
+          <DestinationBody
+            activeDestination={activeDestination}
+            onSelectDestination={onSelectDestination}
+          />
+        </Surface>
+      )}
+
+      {isCalendarDestination ? null : (
+        <div className="cc-two-column">
+          <DesignSystemPreview onDialogOpen={onDialogOpen} onSheetOpen={onSheetOpen} />
+          <StatePreview onSelectDestination={onSelectDestination} />
+        </div>
+      )}
     </div>
   );
 }
@@ -300,7 +308,12 @@ function DestinationBody({
   }
 
   if (activeDestination === 'settings') {
-    return <ProfileSettings />;
+    return (
+      <div className="cc-settings-stack">
+        <ProfileSettings />
+        <CoupleSettings />
+      </div>
+    );
   }
 
   return (

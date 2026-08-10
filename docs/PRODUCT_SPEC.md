@@ -16,8 +16,8 @@ contract unless the owner approves a formal amendment.
 - Repository URL: `https://github.com/bmsmithtx-svg/CouplesCalendar`
 - Canonical local path: `/Users/bmsm1th/Documents/CouplesCalendar`
 - Phase: Phase 1
-- Current implementation status: Milestone 3 - Authentication and User Profiles is implemented and
-  awaiting owner review.
+- Current implementation status: Milestone 4 - Couple Creation, Invitation, and Membership Security
+  is implemented and awaiting owner review.
 
 ## Product Principles
 

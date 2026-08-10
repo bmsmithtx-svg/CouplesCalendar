@@ -610,3 +610,26 @@ Legend:
 - Recurrence expansion is deterministic and bounded.
 - One occurrence can be changed or cancelled without corrupting the series.
 - Delete and cascade behavior cannot expose or orphan protected data.
+
+## Milestone 4 Implementation Notes
+
+Milestone 4 adds the first runtime database migration for the relationship layer:
+
+- `supabase/migrations/202608090001_milestone_4_couples.sql` creates `couples`,
+  `couple_members`, and `couple_invitations`.
+- Couple membership uses active slots `1` and `2`, a partial unique index for one active couple per
+  user, and a partial unique index for one active occupant per slot.
+- A trigger rejects insertion of more than two membership rows for a couple. Replacement membership
+  is therefore not implemented in Milestone 4.
+- Invitation records store only `token_hash`; plaintext tokens are returned once from the creation
+  RPC and are not selectable from the invitations table.
+- Controlled RPCs implement create-couple, create-invitation, inspect-invitation,
+  accept-invitation, revoke-invitation, leave-couple, and delete-couple behavior.
+- Direct client inserts, updates, and deletes for couples, members, and invitations are not granted.
+- RLS allows active members to read their own active couple, active/current membership rows, and
+  non-secret invitation metadata for their couple.
+- Profile reads are extended so active members can read the partner profile fields needed for
+  membership UI.
+
+Milestone 4 does not create event, category, recurrence, reminder, notification, realtime, or PWA
+tables. Those remain assigned to later milestones.

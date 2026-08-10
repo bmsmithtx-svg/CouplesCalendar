@@ -1,12 +1,38 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
-
-import type { Database } from '../../lib/supabase/database.types';
 import type { ProfileInput, ProfileRepository, UserProfile } from './profileTypes';
 import { normalizeProfileInput } from './profileValidation';
 
 const profileColumns = 'id, display_name, default_timezone, created_at, updated_at';
 
-type ProfileRow = Database['public']['Tables']['profiles']['Row'];
+type SupabaseError = {
+  message: string;
+};
+
+type ProfileRow = {
+  created_at: string;
+  default_timezone: string;
+  display_name: string;
+  id: string;
+  updated_at: string;
+};
+
+type ProfileQueryBuilder = {
+  eq: (column: string, value: string) => ProfileQueryBuilder;
+  maybeSingle: () => Promise<{ data: ProfileRow | null; error: SupabaseError | null }>;
+  select: (columns: string) => ProfileQueryBuilder;
+  single: () => Promise<{ data: ProfileRow; error: SupabaseError | null }>;
+  upsert: (
+    values: {
+      default_timezone: string;
+      display_name: string;
+      id: string;
+    },
+    options: { onConflict: string },
+  ) => ProfileQueryBuilder;
+};
+
+type SupabaseProfilesLike = {
+  from: (table: 'profiles') => ProfileQueryBuilder;
+};
 
 function mapProfile(row: ProfileRow): UserProfile {
   return {
@@ -18,19 +44,23 @@ function mapProfile(row: ProfileRow): UserProfile {
   };
 }
 
-export function createSupabaseProfileRepository(
-  client: SupabaseClient<Database>,
-): ProfileRepository {
+function throwSupabaseError(error: SupabaseError): never {
+  throw new Error(error.message);
+}
+
+export function createSupabaseProfileRepository(client: unknown): ProfileRepository {
+  const supabase = client as SupabaseProfilesLike;
+
   return {
     async getOwnProfile(userId: string) {
-      const { data, error } = await client
+      const { data, error } = await supabase
         .from('profiles')
         .select(profileColumns)
         .eq('id', userId)
         .maybeSingle();
 
       if (error) {
-        throw error;
+        throwSupabaseError(error);
       }
 
       return data ? mapProfile(data) : null;
@@ -38,7 +68,7 @@ export function createSupabaseProfileRepository(
 
     async saveOwnProfile(userId: string, input: ProfileInput) {
       const values = normalizeProfileInput(input);
-      const { data, error } = await client
+      const { data, error } = await supabase
         .from('profiles')
         .upsert(
           {
@@ -52,7 +82,7 @@ export function createSupabaseProfileRepository(
         .single();
 
       if (error) {
-        throw error;
+        throwSupabaseError(error);
       }
 
       return mapProfile(data);

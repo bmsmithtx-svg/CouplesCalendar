@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
 import type { Database } from './database.types';
 
@@ -16,7 +16,7 @@ type SupabaseConfig =
 export type SupabaseClientStatus =
   | {
       status: 'ready';
-      client: SupabaseClient<Database>;
+      client: unknown;
     }
   | {
       status: 'missing';
@@ -24,7 +24,7 @@ export type SupabaseClientStatus =
       missing: string[];
     };
 
-let browserClient: SupabaseClient<Database> | undefined;
+let browserClient: unknown;
 
 function readStringEnv(name: string) {
   const env = import.meta.env as unknown as Record<string, unknown>;
