@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
 import { getSafeCoupleErrorMessage } from './coupleErrors';
@@ -39,5 +41,22 @@ describe('Milestone 4 security contract', () => {
     expect(getSafeCoupleErrorMessage(new Error('permission denied for table couple_members'))).toBe(
       'The current session cannot perform that couple action.',
     );
+  });
+
+  it('keeps table-returning couple RPC SQL column references qualified', () => {
+    const migration = readFileSync(
+      new URL(
+        '../../../supabase/migrations/202608100001_fix_couple_rpc_column_ambiguity.sql',
+        import.meta.url,
+      ),
+      'utf8',
+    );
+
+    expect(migration).toContain('where member.couple_id = active_couple_id');
+    expect(migration).toContain('couple.status =');
+    expect(migration).toContain('returning invitation.id, invitation.expires_at');
+    expect(migration).not.toMatch(/\bwhere couple_id =/);
+    expect(migration).not.toMatch(/\bwhere status = 'active'/);
+    expect(migration).not.toContain('returning id, expires_at, created_at');
   });
 });
