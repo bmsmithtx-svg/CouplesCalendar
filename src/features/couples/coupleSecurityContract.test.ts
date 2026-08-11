@@ -1,4 +1,7 @@
+/// <reference types="node" />
+
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
@@ -44,13 +47,11 @@ describe('Milestone 4 security contract', () => {
   });
 
   it('keeps table-returning couple RPC SQL column references qualified', () => {
-    const migration = readFileSync(
-      new URL(
-        '../../../supabase/migrations/202608100001_fix_couple_rpc_column_ambiguity.sql',
-        import.meta.url,
-      ),
-      'utf8',
+    const migrationPath = resolve(
+      process.cwd(),
+      'supabase/migrations/202608100001_fix_couple_rpc_column_ambiguity.sql',
     );
+    const migration = readFileSync(migrationPath, { encoding: 'utf8' });
 
     expect(migration).toContain('where member.couple_id = active_couple_id');
     expect(migration).toContain('couple.status =');
