@@ -8,6 +8,7 @@ import type {
   AuthSession,
   InitialSessionResult,
 } from '../features/auth/authTypes';
+import type { CalendarRepository } from '../features/calendar/calendarTypes';
 import type {
   CoupleMember,
   CoupleRelationship,
@@ -228,13 +229,21 @@ function createCoupleRepository({
   return coupleRepository;
 }
 
+function createCalendarRepository() {
+  return {
+    listEventsForCouple: vi.fn(() => Promise.resolve([])),
+  } satisfies CalendarRepository;
+}
+
 function renderApp({
   authClient = createAuthClient().authClient,
+  calendarRepository = createCalendarRepository(),
   coupleRepository = createCoupleRepository(),
   profileRepository = createProfileRepository(),
   url = '/',
 }: {
   authClient?: AuthClient;
+  calendarRepository?: CalendarRepository;
   coupleRepository?: CoupleRepository;
   profileRepository?: ProfileRepository;
   url?: string;
@@ -244,6 +253,7 @@ function renderApp({
   return render(
     <App
       authClient={authClient}
+      calendarRepository={calendarRepository}
       coupleRepository={coupleRepository}
       profileRepository={profileRepository}
     />,
@@ -577,6 +587,28 @@ describe('App authentication and profile boundary', () => {
     expect(await screen.findByText('Already coupled')).toBeInTheDocument();
     expect(screen.getByText('Couple established')).toBeInTheDocument();
     expect(coupleRepository.acceptInvitation).not.toHaveBeenCalled();
+  });
+
+  it('renders shared calendar viewing for an established couple', async () => {
+    const calendarRepository = createCalendarRepository();
+    const coupleRepository = createCoupleRepository({
+      relationship: createEstablishedRelationship(),
+    });
+
+    renderApp({ calendarRepository, coupleRepository });
+
+    const calendarMain = await screen.findByRole('main', { name: 'Calendar workspace' });
+
+    expect(
+      within(calendarMain).getByRole('heading', { name: 'Shared calendar' }),
+    ).toBeInTheDocument();
+    expect(within(calendarMain).getByText('Alex and Jordan')).toBeInTheDocument();
+    expect(await screen.findByText('No shared events yet')).toBeInTheDocument();
+    expect(calendarRepository.listEventsForCouple).toHaveBeenCalledWith(
+      expect.objectContaining({
+        coupleId: 'couple-1',
+      }),
+    );
   });
 
   it('shows profile validation errors before saving', async () => {

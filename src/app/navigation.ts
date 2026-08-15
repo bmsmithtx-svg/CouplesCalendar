@@ -13,7 +13,7 @@ export const destinationConfig: Record<DestinationId, DestinationConfig> = {
     id: 'calendar',
     label: 'Calendar',
     heading: 'Calendar workspace',
-    description: 'Create and manage the private couple workspace before shared-calendar viewing.',
+    description: 'View the private shared calendar for your active couple workspace.',
   },
   search: {
     id: 'search',

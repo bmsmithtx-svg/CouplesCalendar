@@ -6,6 +6,8 @@ import { Dialog } from '../../components/ui/Dialog';
 import { TextField } from '../../components/ui/Fields';
 import { EmptyState, LoadingIndicator, SkeletonStack } from '../../components/ui/LoadingStates';
 import { StatusBanner } from '../../components/ui/StatusBanner';
+import { SharedCalendar } from '../calendar/SharedCalendar';
+import type { CalendarRepository } from '../calendar/calendarTypes';
 import { useAuth } from '../auth/AuthContext';
 import { useCouple } from './CoupleContext';
 import type {
@@ -322,7 +324,11 @@ function CoupleInvitationManager({
   );
 }
 
-function RelationshipReadyBody() {
+function RelationshipReadyBody({
+  calendarRepository,
+}: {
+  calendarRepository?: CalendarRepository | undefined;
+}) {
   const {
     acceptInvitation,
     createCouple,
@@ -332,6 +338,7 @@ function RelationshipReadyBody() {
     revokeInvitation,
     state,
   } = useCouple();
+  const { state: authState } = useAuth();
 
   if (state.status === 'loading') {
     return (
@@ -417,22 +424,32 @@ function RelationshipReadyBody() {
             <p>{relationship.couple.name} has two active members.</p>
           </StatusBanner>
           <MemberSlots members={relationship.members} />
-          <EmptyState title="Shared calendar not started">
-            <p>Calendar viewing begins after the Milestone 4 relationship boundary is reviewed.</p>
-          </EmptyState>
+          <SharedCalendar
+            relationship={relationship}
+            repository={calendarRepository}
+            timeZone={
+              authState.status === 'authenticated'
+                ? authState.profile.defaultTimezone
+                : 'America/Chicago'
+            }
+          />
         </div>
       ) : null}
     </div>
   );
 }
 
-export function CoupleHome() {
+export function CoupleHome({
+  calendarRepository,
+}: {
+  calendarRepository?: CalendarRepository | undefined;
+}) {
   return (
     <Surface
-      description="Create the private two-person workspace and manage the partner invitation."
-      title="Couple workspace"
+      description="View the shared calendar for the active couple or manage the private workspace."
+      title="Shared calendar"
     >
-      <RelationshipReadyBody />
+      <RelationshipReadyBody calendarRepository={calendarRepository} />
     </Surface>
   );
 }

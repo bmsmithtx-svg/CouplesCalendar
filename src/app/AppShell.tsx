@@ -11,6 +11,7 @@ import { BottomNavigation, SidebarNavigation } from '../components/layout/Naviga
 import { PageHeader } from '../components/layout/PageHeader';
 import { Surface } from '../components/layout/Surface';
 import { useAuth } from '../features/auth/AuthContext';
+import type { CalendarRepository } from '../features/calendar/calendarTypes';
 import {
   CoupleContextSummary,
   CoupleHome,
@@ -34,7 +35,11 @@ const fieldStateOptions = [
   { label: 'Warning state', value: 'warning' },
 ] as const;
 
-export function AppShell() {
+export function AppShell({
+  calendarRepository,
+}: {
+  calendarRepository?: CalendarRepository | undefined;
+}) {
   const { signOut, state } = useAuth();
   const [activeDestination, setActiveDestination] = useState<DestinationId>('calendar');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -88,6 +93,7 @@ export function AppShell() {
         <main className="cc-main" aria-labelledby="shell-destination-title">
           <DestinationPreview
             activeDestination={activeDestination}
+            calendarRepository={calendarRepository}
             onDialogOpen={() => {
               setIsDialogOpen(true);
             }}
@@ -190,11 +196,13 @@ export function AppShell() {
 
 function DestinationPreview({
   activeDestination,
+  calendarRepository,
   onDialogOpen,
   onSelectDestination,
   onSheetOpen,
 }: {
   activeDestination: DestinationId;
+  calendarRepository?: CalendarRepository | undefined;
   onDialogOpen: () => void;
   onSelectDestination: (destination: DestinationId) => void;
   onSheetOpen: () => void;
@@ -209,7 +217,7 @@ function DestinationPreview({
       </h2>
 
       {isCalendarDestination ? (
-        <CoupleHome />
+        <CoupleHome calendarRepository={calendarRepository} />
       ) : (
         <Surface
           actions={
