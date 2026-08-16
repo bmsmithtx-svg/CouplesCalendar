@@ -602,7 +602,7 @@ describe('App authentication and profile boundary', () => {
     expect(
       within(calendarMain).getByRole('heading', { name: 'Shared calendar' }),
     ).toBeInTheDocument();
-    expect(within(calendarMain).getByText('Alex and Jordan')).toBeInTheDocument();
+    expect(await within(calendarMain).findByText('Alex and Jordan')).toBeInTheDocument();
     expect(await screen.findByText('No shared events yet')).toBeInTheDocument();
     expect(calendarRepository.listEventsForCouple).toHaveBeenCalledWith(
       expect.objectContaining({
