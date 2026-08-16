@@ -120,3 +120,24 @@ export function CloseIcon(props: IconProps) {
     </SvgIcon>
   );
 }
+
+export function EditIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M4.5 19.5h4l10.2-10.2a2.1 2.1 0 0 0-3-3L5.5 16.5l-1 3Z" />
+      <path d="m14.4 7.6 2 2" />
+    </SvgIcon>
+  );
+}
+
+export function TrashIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M5 7h14" />
+      <path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7" />
+      <path d="M7 7.5 8 20h8l1-12.5" />
+      <path d="M10.5 11v5" />
+      <path d="M13.5 11v5" />
+    </SvgIcon>
+  );
+}

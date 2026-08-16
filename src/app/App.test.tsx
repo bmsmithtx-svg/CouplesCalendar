@@ -8,7 +8,11 @@ import type {
   AuthSession,
   InitialSessionResult,
 } from '../features/auth/authTypes';
-import type { CalendarRepository } from '../features/calendar/calendarTypes';
+import type {
+  CalendarEventCreateInput,
+  CalendarEventUpdateInput,
+  CalendarRepository,
+} from '../features/calendar/calendarTypes';
 import type {
   CoupleMember,
   CoupleRelationship,
@@ -231,7 +235,46 @@ function createCoupleRepository({
 
 function createCalendarRepository() {
   return {
+    createEvent: vi.fn((input: CalendarEventCreateInput) =>
+      Promise.resolve({
+        coupleId: input.coupleId,
+        createdAt: '2026-08-12T16:00:00.000Z',
+        createdBy: input.createdBy,
+        creatorDisplayName: 'Alex',
+        description: input.description,
+        endsAt: input.endsAt,
+        id: 'created-event',
+        isAllDay: input.isAllDay,
+        location: input.location,
+        startsAt: input.startsAt,
+        timeZone: input.timeZone,
+        title: input.title,
+        updatedAt: '2026-08-12T16:00:00.000Z',
+        updatedBy: null,
+        version: 1,
+      }),
+    ),
+    deleteEvent: vi.fn(() => Promise.resolve()),
     listEventsForCouple: vi.fn(() => Promise.resolve([])),
+    updateEvent: vi.fn((input: CalendarEventUpdateInput) =>
+      Promise.resolve({
+        coupleId: input.coupleId,
+        createdAt: '2026-08-12T16:00:00.000Z',
+        createdBy: 'user-1',
+        creatorDisplayName: 'Alex',
+        description: input.description,
+        endsAt: input.endsAt,
+        id: input.eventId,
+        isAllDay: input.isAllDay,
+        location: input.location,
+        startsAt: input.startsAt,
+        timeZone: input.timeZone,
+        title: input.title,
+        updatedAt: '2026-08-12T16:30:00.000Z',
+        updatedBy: 'user-1',
+        version: input.expectedVersion + 1,
+      }),
+    ),
   } satisfies CalendarRepository;
 }
 
@@ -609,6 +652,34 @@ describe('App authentication and profile boundary', () => {
         coupleId: 'couple-1',
       }),
     );
+  });
+
+  it('opens event creation from the phone Add navigation for an established couple', async () => {
+    const calendarRepository = createCalendarRepository();
+    const coupleRepository = createCoupleRepository({
+      relationship: createEstablishedRelationship(),
+    });
+
+    renderApp({ calendarRepository, coupleRepository });
+
+    const phoneNav = await screen.findByRole('navigation', { name: 'Phone primary navigation' });
+    fireEvent.click(within(phoneNav).getByRole('button', { name: 'Add event' }));
+
+    expect(await screen.findByRole('form', { name: 'Event form' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/Title/), {
+      target: { value: 'Movie night' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+
+    await waitFor(() => {
+      expect(calendarRepository.createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          coupleId: 'couple-1',
+          createdBy: 'user-1',
+          title: 'Movie night',
+        }),
+      );
+    });
   });
 
   it('shows profile validation errors before saving', async () => {

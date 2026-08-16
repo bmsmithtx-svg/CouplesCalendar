@@ -13,5 +13,9 @@ export function getSafeCalendarErrorMessage(error: unknown) {
     return 'The shared calendar could not be reached. Check your connection and try again.';
   }
 
+  if (message.includes('calendar_event_conflict')) {
+    return 'This event changed since it was opened. Refresh the calendar and try again.';
+  }
+
   return 'Shared calendar events are unavailable right now.';
 }

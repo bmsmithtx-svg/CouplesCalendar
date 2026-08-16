@@ -3,7 +3,13 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { CoupleMember, CoupleRelationship } from '../couples/coupleTypes';
 import { SharedCalendar } from './SharedCalendar';
-import type { CalendarEvent, CalendarRepository } from './calendarTypes';
+import type {
+  CalendarEvent,
+  CalendarEventCreateInput,
+  CalendarEventDeleteInput,
+  CalendarEventUpdateInput,
+  CalendarRepository,
+} from './calendarTypes';
 
 const alexMember = {
   activeMemberSlot: 1,
@@ -45,9 +51,56 @@ function createEvent(
     endsAt: input.endsAt,
     id: input.id ?? input.title,
     isAllDay: input.isAllDay ?? false,
+    location: input.location ?? null,
     startsAt: input.startsAt,
+    timeZone: input.timeZone ?? 'America/Chicago',
     title: input.title,
     updatedAt: input.updatedAt ?? '2026-08-01T00:00:00.000Z',
+    updatedBy: input.updatedBy ?? null,
+    version: input.version ?? 1,
+  };
+}
+
+function createCalendarRepository(events: CalendarEvent[] = []): CalendarRepository {
+  let storedEvents = [...events];
+
+  return {
+    createEvent: vi.fn((input: CalendarEventCreateInput) => {
+      const event = createEvent({
+        ...input,
+        createdAt: '2026-08-12T16:00:00.000Z',
+        creatorDisplayName: 'Alex',
+        id: 'created-event',
+        updatedAt: '2026-08-12T16:00:00.000Z',
+        updatedBy: null,
+        version: 1,
+      });
+
+      storedEvents = [...storedEvents, event];
+
+      return Promise.resolve(event);
+    }),
+    deleteEvent: vi.fn(({ eventId }: CalendarEventDeleteInput) => {
+      storedEvents = storedEvents.filter((event) => event.id !== eventId);
+
+      return Promise.resolve();
+    }),
+    listEventsForCouple: vi.fn(() => Promise.resolve(storedEvents)),
+    updateEvent: vi.fn((input: CalendarEventUpdateInput) => {
+      const event = createEvent({
+        ...input,
+        id: input.eventId,
+        updatedAt: '2026-08-12T16:30:00.000Z',
+        updatedBy: 'user-1',
+        version: input.expectedVersion + 1,
+      });
+
+      storedEvents = storedEvents.map((candidate) =>
+        candidate.id === input.eventId ? event : candidate,
+      );
+
+      return Promise.resolve(event);
+    }),
   };
 }
 
@@ -57,6 +110,7 @@ function renderCalendar(
 ) {
   return render(
     <SharedCalendar
+      currentUserId="user-1"
       now={now}
       relationship={relationship}
       repository={repository}
@@ -67,9 +121,7 @@ function renderCalendar(
 
 describe('SharedCalendar', () => {
   it('renders the current month and an intentional zero-event state', async () => {
-    const repository: CalendarRepository = {
-      listEventsForCouple: vi.fn(() => Promise.resolve([])),
-    };
+    const repository = createCalendarRepository();
 
     renderCalendar(repository);
 
@@ -91,9 +143,7 @@ describe('SharedCalendar', () => {
   });
 
   it('supports month navigation and returning to today', async () => {
-    const repository: CalendarRepository = {
-      listEventsForCouple: vi.fn(() => Promise.resolve([])),
-    };
+    const repository = createCalendarRepository();
 
     renderCalendar(repository);
     await screen.findByText('No shared events yet');
@@ -116,33 +166,29 @@ describe('SharedCalendar', () => {
   });
 
   it('shows selected-day events in agenda order with partner ownership labels', async () => {
-    const repository: CalendarRepository = {
-      listEventsForCouple: vi.fn(() =>
-        Promise.resolve([
-          createEvent({
-            createdBy: 'user-2',
-            creatorDisplayName: 'Jordan',
-            endsAt: '2026-08-12T22:00:00.000Z',
-            id: 'dinner',
-            startsAt: '2026-08-12T21:00:00.000Z',
-            title: 'Dinner',
-          }),
-          createEvent({
-            endsAt: '2026-08-13T05:00:00.000Z',
-            id: 'anniversary',
-            isAllDay: true,
-            startsAt: '2026-08-12T05:00:00.000Z',
-            title: 'Anniversary',
-          }),
-          createEvent({
-            endsAt: '2026-08-12T15:30:00.000Z',
-            id: 'coffee',
-            startsAt: '2026-08-12T15:00:00.000Z',
-            title: 'Coffee',
-          }),
-        ]),
-      ),
-    };
+    const repository = createCalendarRepository([
+      createEvent({
+        createdBy: 'user-2',
+        creatorDisplayName: 'Jordan',
+        endsAt: '2026-08-12T22:00:00.000Z',
+        id: 'dinner',
+        startsAt: '2026-08-12T21:00:00.000Z',
+        title: 'Dinner',
+      }),
+      createEvent({
+        endsAt: '2026-08-13T05:00:00.000Z',
+        id: 'anniversary',
+        isAllDay: true,
+        startsAt: '2026-08-12T05:00:00.000Z',
+        title: 'Anniversary',
+      }),
+      createEvent({
+        endsAt: '2026-08-12T15:30:00.000Z',
+        id: 'coffee',
+        startsAt: '2026-08-12T15:00:00.000Z',
+        title: 'Coffee',
+      }),
+    ]);
 
     renderCalendar(repository);
 
@@ -165,12 +211,13 @@ describe('SharedCalendar', () => {
   });
 
   it('shows a safe error state and retries loading', async () => {
-    const repository: CalendarRepository = {
+    const repository = {
+      ...createCalendarRepository(),
       listEventsForCouple: vi
         .fn()
         .mockRejectedValueOnce(new Error('permission denied for table calendar_events'))
         .mockResolvedValueOnce([]),
-    };
+    } satisfies CalendarRepository;
 
     renderCalendar(repository);
 
@@ -181,5 +228,104 @@ describe('SharedCalendar', () => {
 
     expect(await screen.findByText('No shared events yet')).toBeInTheDocument();
     expect(repository.listEventsForCouple).toHaveBeenCalledTimes(2);
+  });
+
+  it('creates an event from the calendar add action and refreshes the agenda', async () => {
+    const repository = createCalendarRepository();
+
+    renderCalendar(repository);
+    await screen.findByText('No shared events yet');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add event' }));
+    await screen.findByRole('form', { name: 'Event form' });
+    fireEvent.change(screen.getByLabelText(/Title/), {
+      target: { value: 'Movie night' },
+    });
+    fireEvent.change(screen.getByLabelText(/Location/), {
+      target: { value: 'Cinema' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+
+    expect(await screen.findByText('Event created.')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Movie night' })).toBeInTheDocument();
+    expect(repository.createEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        coupleId: 'couple-1',
+        createdBy: 'user-1',
+        location: 'Cinema',
+        title: 'Movie night',
+      }),
+    );
+  });
+
+  it('opens event details and saves edits with the loaded event version', async () => {
+    const repository = createCalendarRepository([
+      createEvent({
+        description: 'Reservation',
+        endsAt: '2026-08-12T23:00:00.000Z',
+        id: 'dinner',
+        location: 'Old spot',
+        startsAt: '2026-08-12T21:00:00.000Z',
+        title: 'Dinner',
+        version: 5,
+      }),
+    ]);
+
+    renderCalendar(repository);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Open Dinner/ }));
+    expect(screen.getAllByText('Old spot')).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.change(screen.getByLabelText(/Title/), {
+      target: { value: 'Dinner updated' },
+    });
+    fireEvent.change(screen.getByLabelText(/Location/), {
+      target: { value: 'New spot' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(await screen.findByText('Event updated.')).toBeInTheDocument();
+    expect(await screen.findAllByText('New spot')).toHaveLength(2);
+    expect(repository.updateEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        coupleId: 'couple-1',
+        eventId: 'dinner',
+        expectedVersion: 5,
+        location: 'New spot',
+        title: 'Dinner updated',
+      }),
+    );
+  });
+
+  it('requires confirmation before deleting an event and removes it from the agenda', async () => {
+    const repository = createCalendarRepository([
+      createEvent({
+        endsAt: '2026-08-12T23:00:00.000Z',
+        id: 'dinner',
+        startsAt: '2026-08-12T21:00:00.000Z',
+        title: 'Dinner',
+        version: 2,
+      }),
+    ]);
+
+    renderCalendar(repository);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Open Dinner/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(repository.deleteEvent).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete event' }));
+
+    expect(await screen.findByText('Event deleted.')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Dinner' })).not.toBeInTheDocument();
+    expect(repository.deleteEvent).toHaveBeenCalledWith({
+      coupleId: 'couple-1',
+      eventId: 'dinner',
+      expectedVersion: 2,
+    });
   });
 });

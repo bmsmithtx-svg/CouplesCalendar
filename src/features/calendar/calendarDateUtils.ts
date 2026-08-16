@@ -27,7 +27,8 @@ type ZonedDateTimeParts = CalendarDate & {
   second: number;
 };
 
-type EventDateRange = Pick<CalendarEvent, 'endsAt' | 'startsAt'>;
+type EventDateRange = Pick<CalendarEvent, 'endsAt' | 'startsAt'> &
+  Partial<Pick<CalendarEvent, 'isAllDay' | 'timeZone'>>;
 type SortableEvent = Pick<CalendarEvent, 'endsAt' | 'isAllDay' | 'startsAt' | 'title'>;
 
 const zonedDateFormatters = new Map<string, Intl.DateTimeFormat>();
@@ -107,6 +108,11 @@ function zonedDateTimeToUtc(parts: ZonedDateTimeParts, timeZone: string) {
 
   return new Date(utcTime);
 }
+
+export type CalendarTime = {
+  hour: number;
+  minute: number;
+};
 
 export function toDateKey(date: CalendarDate) {
   return `${String(date.year)}-${String(date.month).padStart(2, '0')}-${String(date.day).padStart(
@@ -220,6 +226,50 @@ export function getDateStartInTimeZone(date: CalendarDate, timeZone: string) {
   );
 }
 
+export function getDateTimeInTimeZone(date: CalendarDate, time: CalendarTime, timeZone: string) {
+  return zonedDateTimeToUtc(
+    {
+      ...date,
+      hour: time.hour,
+      minute: time.minute,
+      second: 0,
+    },
+    timeZone,
+  );
+}
+
+export function getDateInputValueInTimeZone(value: string, timeZone: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return toDateKey(getCalendarDateInTimeZone(date, timeZone));
+}
+
+export function getTimeInputValueInTimeZone(value: string, timeZone: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const parts = getZonedDateTimeParts(date, timeZone);
+
+  return `${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}`;
+}
+
+export function getInclusiveAllDayEndDateKey(event: Pick<CalendarEvent, 'endsAt' | 'timeZone'>) {
+  const endsAt = new Date(event.endsAt);
+
+  if (Number.isNaN(endsAt.getTime())) {
+    return '';
+  }
+
+  return toDateKey(getCalendarDateInTimeZone(new Date(endsAt.getTime() - 1), event.timeZone));
+}
+
 export function getVisibleGridUtcRange(cells: CalendarMonthCell[], timeZone: string) {
   const firstCell = cells[0];
   const lastCell = cells.at(-1);
@@ -243,8 +293,15 @@ export function getEventDateKeys(event: EventDateRange, timeZone: string) {
   }
 
   const inclusiveEnd = new Date(Math.max(startsAt.getTime(), endsAt.getTime() - 1));
-  const startDate = getCalendarDateInTimeZone(startsAt, timeZone);
-  const endDate = getCalendarDateInTimeZone(inclusiveEnd, timeZone);
+  const eventTimeZone =
+    'isAllDay' in event &&
+    event.isAllDay &&
+    'timeZone' in event &&
+    typeof event.timeZone === 'string'
+      ? event.timeZone
+      : timeZone;
+  const startDate = getCalendarDateInTimeZone(startsAt, eventTimeZone);
+  const endDate = getCalendarDateInTimeZone(inclusiveEnd, eventTimeZone);
   const keys: string[] = [];
   let cursor = startDate;
 

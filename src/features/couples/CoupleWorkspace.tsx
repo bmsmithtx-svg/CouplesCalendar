@@ -326,8 +326,12 @@ function CoupleInvitationManager({
 
 function RelationshipReadyBody({
   calendarRepository,
+  onEventCreateClosed,
+  openEventCreate,
 }: {
   calendarRepository?: CalendarRepository | undefined;
+  onEventCreateClosed?: (() => void) | undefined;
+  openEventCreate?: boolean | undefined;
 }) {
   const {
     acceptInvitation,
@@ -425,6 +429,9 @@ function RelationshipReadyBody({
           </StatusBanner>
           <MemberSlots members={relationship.members} />
           <SharedCalendar
+            autoOpenCreate={openEventCreate}
+            currentUserId={authState.status === 'authenticated' ? authState.session.user.id : ''}
+            onCreateClosed={onEventCreateClosed}
             relationship={relationship}
             repository={calendarRepository}
             timeZone={
@@ -441,15 +448,23 @@ function RelationshipReadyBody({
 
 export function CoupleHome({
   calendarRepository,
+  onEventCreateClosed,
+  openEventCreate,
 }: {
   calendarRepository?: CalendarRepository | undefined;
+  onEventCreateClosed?: (() => void) | undefined;
+  openEventCreate?: boolean | undefined;
 }) {
   return (
     <Surface
       description="View the shared calendar for the active couple or manage the private workspace."
       title="Shared calendar"
     >
-      <RelationshipReadyBody calendarRepository={calendarRepository} />
+      <RelationshipReadyBody
+        calendarRepository={calendarRepository}
+        onEventCreateClosed={onEventCreateClosed}
+        openEventCreate={openEventCreate}
+      />
     </Surface>
   );
 }

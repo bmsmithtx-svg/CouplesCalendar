@@ -7,9 +7,13 @@ export type CalendarEvent = {
   endsAt: string;
   id: string;
   isAllDay: boolean;
+  location: string | null;
   startsAt: string;
+  timeZone: string;
   title: string;
   updatedAt: string;
+  updatedBy: string | null;
+  version: number;
 };
 
 export type CalendarEventsQuery = {
@@ -18,6 +22,36 @@ export type CalendarEventsQuery = {
   rangeStart: string;
 };
 
+export type CalendarEventWritable = {
+  description: string | null;
+  endsAt: string;
+  isAllDay: boolean;
+  location: string | null;
+  startsAt: string;
+  timeZone: string;
+  title: string;
+};
+
+export type CalendarEventCreateInput = CalendarEventWritable & {
+  coupleId: string;
+  createdBy: string;
+};
+
+export type CalendarEventUpdateInput = CalendarEventWritable & {
+  coupleId: string;
+  eventId: string;
+  expectedVersion: number;
+};
+
+export type CalendarEventDeleteInput = {
+  coupleId: string;
+  eventId: string;
+  expectedVersion: number;
+};
+
 export type CalendarRepository = {
+  createEvent: (input: CalendarEventCreateInput) => Promise<CalendarEvent>;
+  deleteEvent: (input: CalendarEventDeleteInput) => Promise<void>;
   listEventsForCouple: (query: CalendarEventsQuery) => Promise<CalendarEvent[]>;
+  updateEvent: (input: CalendarEventUpdateInput) => Promise<CalendarEvent>;
 };

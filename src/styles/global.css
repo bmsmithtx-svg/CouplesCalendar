@@ -764,6 +764,12 @@ button {
   padding: 1rem;
 }
 
+.cc-calendar-summary__actions {
+  align-items: start;
+  display: grid;
+  gap: 0.75rem;
+}
+
 .cc-calendar-summary__label {
   color: var(--cc-color-text-muted);
   font-size: 0.78rem;
@@ -974,10 +980,18 @@ button {
   border: 1px solid var(--cc-color-border);
   border-left: 0.35rem solid var(--cc-color-primary);
   border-radius: var(--cc-radius-md);
+  color: inherit;
+  cursor: pointer;
   display: grid;
   gap: 0.65rem;
   min-width: 0;
   padding: 0.85rem;
+  text-align: left;
+  width: 100%;
+}
+
+.cc-agenda-event:hover {
+  border-color: var(--cc-color-border-strong);
 }
 
 .cc-agenda-event[data-owner-slot='2'] {
@@ -1008,14 +1022,102 @@ button {
 }
 
 .cc-agenda-event__owner,
+.cc-agenda-event__location,
 .cc-agenda-event__description {
   color: var(--cc-color-text-muted);
   margin: 0.2rem 0 0;
   overflow-wrap: anywhere;
 }
 
+.cc-agenda-event__location {
+  font-weight: 720;
+}
+
 .cc-agenda-event__description {
   font-size: 0.92rem;
+}
+
+.cc-event-form {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.cc-event-form__grid {
+  display: grid;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.cc-event-form__actions,
+.cc-event-details__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  justify-content: end;
+}
+
+.cc-checkbox-field {
+  align-items: center;
+  background: var(--cc-color-surface-elevated);
+  border: 1px solid var(--cc-color-border);
+  border-radius: var(--cc-radius-md);
+  cursor: pointer;
+  display: flex;
+  font-weight: 780;
+  gap: 0.65rem;
+  min-height: var(--cc-size-touch);
+  padding: 0.65rem 0.75rem;
+}
+
+.cc-checkbox-field input {
+  accent-color: var(--cc-color-primary);
+  height: 1.15rem;
+  width: 1.15rem;
+}
+
+.cc-form-error {
+  background: var(--cc-color-error-surface);
+  border: 1px solid var(--cc-color-error);
+  border-radius: var(--cc-radius-md);
+  color: var(--cc-color-error);
+  font-weight: 720;
+  margin: 0;
+  padding: 0.75rem;
+}
+
+.cc-event-details {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.cc-event-details__list {
+  display: grid;
+  gap: 0.85rem;
+  margin: 0;
+  min-width: 0;
+}
+
+.cc-event-details__list div {
+  border-bottom: 1px solid var(--cc-color-border);
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+  padding-bottom: 0.8rem;
+}
+
+.cc-event-details__list dt {
+  color: var(--cc-color-text-muted);
+  font-size: 0.78rem;
+  font-weight: 820;
+  text-transform: uppercase;
+}
+
+.cc-event-details__list dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .cc-control-grid {
@@ -1331,6 +1433,10 @@ button {
 
   .cc-agenda-event {
     grid-template-columns: minmax(6.5rem, 0.28fr) minmax(0, 1fr);
+  }
+
+  .cc-event-form__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

@@ -208,7 +208,7 @@ function DestinationPreview({
   onSheetOpen: () => void;
 }) {
   const active = getDestination(activeDestination);
-  const isCalendarDestination = activeDestination === 'calendar';
+  const isCalendarDestination = activeDestination === 'calendar' || activeDestination === 'add';
 
   return (
     <div className="cc-main__stack">
@@ -217,7 +217,14 @@ function DestinationPreview({
       </h2>
 
       {isCalendarDestination ? (
-        <CoupleHome calendarRepository={calendarRepository} />
+        <CoupleHome
+          calendarRepository={calendarRepository}
+          key={activeDestination === 'add' ? 'add-event' : 'calendar'}
+          onEventCreateClosed={() => {
+            onSelectDestination('calendar');
+          }}
+          openEventCreate={activeDestination === 'add'}
+        />
       ) : (
         <Surface
           actions={
@@ -245,10 +252,7 @@ function DestinationPreview({
           description={active.description}
           title={active.heading}
         >
-          <DestinationBody
-            activeDestination={activeDestination}
-            onSelectDestination={onSelectDestination}
-          />
+          <DestinationBody activeDestination={activeDestination} />
         </Surface>
       )}
 
@@ -262,13 +266,7 @@ function DestinationPreview({
   );
 }
 
-function DestinationBody({
-  activeDestination,
-  onSelectDestination,
-}: {
-  activeDestination: DestinationId;
-  onSelectDestination: (destination: DestinationId) => void;
-}) {
+function DestinationBody({ activeDestination }: { activeDestination: DestinationId }) {
   if (activeDestination === 'search') {
     return (
       <div className="cc-placeholder-grid">
@@ -282,23 +280,6 @@ function DestinationBody({
           placeholder="Future event search"
         />
       </div>
-    );
-  }
-
-  if (activeDestination === 'add') {
-    return (
-      <EmptyState
-        actionLabel="Return to calendar shell"
-        onAction={() => {
-          onSelectDestination('calendar');
-        }}
-        title="Event creation is not implemented"
-      >
-        <p>
-          The Add event target remains reachable, but event creation belongs to a later milestone
-          after couple membership and calendar data exist.
-        </p>
-      </EmptyState>
     );
   }
 
@@ -445,7 +426,7 @@ function StatePreview({
         <LoadingIndicator label="Loading shell preview" />
         <SkeletonStack count={3} />
         <EmptyState
-          actionLabel="Open Add event placeholder"
+          actionLabel="Open Add event"
           onAction={() => {
             onSelectDestination('add');
           }}

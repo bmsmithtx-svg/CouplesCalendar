@@ -22,9 +22,13 @@ function createEvent(
     endsAt: input.endsAt,
     id: input.id ?? input.title,
     isAllDay: input.isAllDay ?? false,
+    location: input.location ?? null,
     startsAt: input.startsAt,
+    timeZone: input.timeZone ?? 'America/Chicago',
     title: input.title,
     updatedAt: input.updatedAt ?? '2026-08-01T00:00:00.000Z',
+    updatedBy: input.updatedBy ?? null,
+    version: input.version ?? 1,
   };
 }
 
@@ -93,6 +97,18 @@ describe('calendar date utilities', () => {
         {
           endsAt: '2026-08-13T05:00:00.000Z',
           startsAt: '2026-08-12T05:00:00.000Z',
+        },
+        'America/Chicago',
+      ),
+    ).toEqual(['2026-08-12']);
+
+    expect(
+      getEventDateKeys(
+        {
+          endsAt: '2026-08-13T07:00:00.000Z',
+          isAllDay: true,
+          startsAt: '2026-08-12T07:00:00.000Z',
+          timeZone: 'America/Los_Angeles',
         },
         'America/Chicago',
       ),

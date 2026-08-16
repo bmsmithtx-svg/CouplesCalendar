@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '../../components/ui/Button';
+import { Dialog } from '../../components/ui/Dialog';
 import { EmptyState, LoadingIndicator, SkeletonStack } from '../../components/ui/LoadingStates';
+import { Sheet } from '../../components/ui/Sheet';
 import { StatusBanner } from '../../components/ui/StatusBanner';
 import type { CoupleMember, CoupleRelationship } from '../couples/coupleTypes';
 import { getSupabaseClientStatus } from '../../lib/supabase/client';
 import { cx } from '../../lib/cx';
+import { EditIcon, PlusIcon, TrashIcon } from '../../icons/AppIcons';
 import {
   addCalendarMonths,
   buildMonthGrid,
@@ -15,14 +18,22 @@ import {
   formatMonthHeading,
   getCalendarDateInTimeZone,
   getCalendarMonth,
+  getDateInputValueInTimeZone,
+  getInclusiveAllDayEndDateKey,
   getVisibleGridUtcRange,
   groupEventsByDate,
+  parseDateKey,
   toDateKey,
   type CalendarDate,
 } from './calendarDateUtils';
+import { EventForm } from './EventForm';
 import { getSafeCalendarErrorMessage } from './calendarErrors';
 import { createSupabaseCalendarRepository } from './calendarService';
-import type { CalendarEvent, CalendarRepository } from './calendarTypes';
+import type { CalendarEvent, CalendarEventWritable, CalendarRepository } from './calendarTypes';
+import {
+  getCalendarEventFormInputFromEvent,
+  getDefaultCalendarEventFormInput,
+} from './eventValidation';
 
 type EstablishedCoupleRelationship = Extract<CoupleRelationship, { kind: 'established' }>;
 
@@ -51,6 +62,17 @@ type CalendarLoadState =
       queryKey: string;
       status: 'error';
     };
+
+type EventPanel =
+  | {
+      kind: 'create';
+    }
+  | {
+      eventId: string;
+      kind: 'details' | 'edit';
+    };
+
+type EventOperation = 'creating' | 'deleting' | 'idle' | 'updating';
 
 const emptyCalendarEvents: CalendarEvent[] = [];
 
@@ -123,6 +145,48 @@ function getDayButtonLabel({
   return parts.join(', ');
 }
 
+function getEventDisplayDate(event: CalendarEvent, viewerTimeZone: string) {
+  const timeZone = event.isAllDay ? event.timeZone : viewerTimeZone;
+  const dateKey = getDateInputValueInTimeZone(event.startsAt, timeZone);
+
+  return dateKey ? formatCalendarDate(parseDateKey(dateKey)) : 'Date unavailable';
+}
+
+function formatEventDetailTime(event: CalendarEvent, viewerTimeZone: string) {
+  if (event.isAllDay) {
+    const startDateKey = getDateInputValueInTimeZone(event.startsAt, event.timeZone);
+    const endDateKey = getInclusiveAllDayEndDateKey(event);
+
+    if (!startDateKey || !endDateKey) {
+      return 'All day';
+    }
+
+    const startLabel = formatCalendarDate(parseDateKey(startDateKey));
+    const endLabel = formatCalendarDate(parseDateKey(endDateKey));
+
+    return startDateKey === endDateKey
+      ? `${startLabel}, all day`
+      : `${startLabel} - ${endLabel}, all day`;
+  }
+
+  const formatter = new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: viewerTimeZone,
+  });
+
+  return `${formatter.format(new Date(event.startsAt))} - ${formatter.format(
+    new Date(event.endsAt),
+  )}`;
+}
+
+function getEventSelectedDate(event: CalendarEvent, viewerTimeZone: string) {
+  return getCalendarDateInTimeZone(
+    new Date(event.startsAt),
+    event.isAllDay ? event.timeZone : viewerTimeZone,
+  );
+}
+
 function MemberLegend({ members }: { members: CoupleMember[] }) {
   return (
     <div className="cc-calendar-legend" aria-label="Calendar members">
@@ -165,25 +229,36 @@ function EventIndicators({
 function AgendaEvent({
   event,
   members,
+  onOpen,
   timeZone,
 }: {
   event: CalendarEvent;
   members: CoupleMember[];
+  onOpen: (event: CalendarEvent) => void;
   timeZone: string;
 }) {
   const ownerSlot = getOwnerSlot(event, members);
 
   return (
-    <article className="cc-agenda-event" data-owner-slot={ownerSlot}>
+    <button
+      aria-label={`Open ${event.title} on ${getEventDisplayDate(event, timeZone)}`}
+      className="cc-agenda-event"
+      data-owner-slot={ownerSlot}
+      onClick={() => {
+        onOpen(event);
+      }}
+      type="button"
+    >
       <div className="cc-agenda-event__time">{formatEventTime(event, timeZone)}</div>
       <div className="cc-agenda-event__body">
         <h4 className="cc-agenda-event__title">{event.title}</h4>
         <p className="cc-agenda-event__owner">{getOwnerLabel(event, members)}</p>
+        {event.location ? <p className="cc-agenda-event__location">{event.location}</p> : null}
         {event.description ? (
           <p className="cc-agenda-event__description">{event.description}</p>
         ) : null}
       </div>
-    </article>
+    </button>
   );
 }
 
@@ -191,6 +266,7 @@ function AgendaSection({
   events,
   loadState,
   members,
+  onEventOpen,
   onRetry,
   selectedDate,
   timeZone,
@@ -198,6 +274,7 @@ function AgendaSection({
   events: CalendarEvent[];
   loadState: CalendarLoadState;
   members: CoupleMember[];
+  onEventOpen: (event: CalendarEvent) => void;
   onRetry: () => void;
   selectedDate: CalendarDate;
   timeZone: string;
@@ -243,7 +320,13 @@ function AgendaSection({
       {loadState.status === 'ready' && events.length > 0 ? (
         <div className="cc-agenda-event-list" aria-label={`Events for ${selectedDateLabel}`}>
           {events.map((event) => (
-            <AgendaEvent event={event} key={event.id} members={members} timeZone={timeZone} />
+            <AgendaEvent
+              event={event}
+              key={event.id}
+              members={members}
+              onOpen={onEventOpen}
+              timeZone={timeZone}
+            />
           ))}
         </div>
       ) : null}
@@ -251,13 +334,85 @@ function AgendaSection({
   );
 }
 
+function EventDetails({
+  event,
+  members,
+  onDelete,
+  onEdit,
+  timeZone,
+}: {
+  event: CalendarEvent;
+  members: CoupleMember[];
+  onDelete: (event: CalendarEvent) => void;
+  onEdit: (event: CalendarEvent) => void;
+  timeZone: string;
+}) {
+  return (
+    <div className="cc-event-details">
+      <dl className="cc-event-details__list">
+        <div>
+          <dt>When</dt>
+          <dd>{formatEventDetailTime(event, timeZone)}</dd>
+        </div>
+        <div>
+          <dt>Timezone</dt>
+          <dd>{event.timeZone}</dd>
+        </div>
+        <div>
+          <dt>Created by</dt>
+          <dd>{getOwnerLabel(event, members)}</dd>
+        </div>
+        {event.location ? (
+          <div>
+            <dt>Location</dt>
+            <dd>{event.location}</dd>
+          </div>
+        ) : null}
+        {event.description ? (
+          <div>
+            <dt>Notes</dt>
+            <dd>{event.description}</dd>
+          </div>
+        ) : null}
+      </dl>
+
+      <div className="cc-event-details__actions">
+        <Button
+          onClick={() => {
+            onEdit(event);
+          }}
+          variant="primary"
+        >
+          <EditIcon />
+          Edit
+        </Button>
+        <Button
+          onClick={() => {
+            onDelete(event);
+          }}
+          variant="destructive"
+        >
+          <TrashIcon />
+          Delete
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function SharedCalendar({
+  autoOpenCreate = false,
+  currentUserId,
   now,
+  onCreateClosed,
   relationship,
   repository,
   timeZone,
 }: {
+  autoOpenCreate?: boolean | undefined;
+  currentUserId: string;
   now?: Date | undefined;
+  onCreateClosed?: (() => void) | undefined;
   relationship: EstablishedCoupleRelationship;
   repository?: CalendarRepository | undefined;
   timeZone: string;
@@ -266,6 +421,13 @@ export function SharedCalendar({
   const [selectedDate, setSelectedDate] = useState(today);
   const [visibleMonth, setVisibleMonth] = useState(() => getCalendarMonth(today));
   const [retryToken, setRetryToken] = useState(0);
+  const [eventPanel, setEventPanel] = useState<EventPanel | null>(() =>
+    autoOpenCreate ? { kind: 'create' } : null,
+  );
+  const [eventOperation, setEventOperation] = useState<EventOperation>('idle');
+  const [eventError, setEventError] = useState<string | undefined>();
+  const [eventNotice, setEventNotice] = useState<string | undefined>();
+  const [deleteTarget, setDeleteTarget] = useState<CalendarEvent | null>(null);
   const runtime = useMemo(() => buildCalendarRuntime(repository), [repository]);
 
   const cells = useMemo(
@@ -362,6 +524,18 @@ export function SharedCalendar({
   const eventsByDate = useMemo(() => groupEventsByDate(events, timeZone), [events, timeZone]);
   const selectedEvents = eventsByDate.get(toDateKey(selectedDate)) ?? [];
   const heading = formatMonthHeading(visibleMonth);
+  const activeEvent =
+    eventPanel?.kind === 'details' || eventPanel?.kind === 'edit'
+      ? (events.find((event) => event.id === eventPanel.eventId) ?? null)
+      : null;
+  const createFormInput = useMemo(
+    () =>
+      getDefaultCalendarEventFormInput({
+        selectedDate,
+        timeZone,
+      }),
+    [selectedDate, timeZone],
+  );
 
   function moveSelectedMonth(months: number) {
     const nextSelectedDate = addCalendarMonths(selectedDate, months);
@@ -375,6 +549,146 @@ export function SharedCalendar({
     setVisibleMonth(getCalendarMonth(nextToday));
   }
 
+  function refreshEvents() {
+    setRetryToken((value) => value + 1);
+  }
+
+  function upsertLoadedEvent(event: CalendarEvent) {
+    setLoadState((current) =>
+      current.status === 'ready'
+        ? {
+            ...current,
+            events: [...current.events.filter((candidate) => candidate.id !== event.id), event],
+          }
+        : current,
+    );
+  }
+
+  function removeLoadedEvent(eventId: string) {
+    setLoadState((current) =>
+      current.status === 'ready'
+        ? {
+            ...current,
+            events: current.events.filter((candidate) => candidate.id !== eventId),
+          }
+        : current,
+    );
+  }
+
+  function selectEventDate(event: CalendarEvent) {
+    const nextSelectedDate = getEventSelectedDate(event, timeZone);
+
+    setSelectedDate(nextSelectedDate);
+    setVisibleMonth(getCalendarMonth(nextSelectedDate));
+  }
+
+  function openCreatePanel() {
+    setEventError(undefined);
+    setEventNotice(undefined);
+    setEventPanel({ kind: 'create' });
+  }
+
+  function closeEventPanel() {
+    const wasCreatePanel = eventPanel?.kind === 'create';
+
+    setEventPanel(null);
+    setEventError(undefined);
+    setDeleteTarget(null);
+
+    if (wasCreatePanel) {
+      onCreateClosed?.();
+    }
+  }
+
+  async function handleCreateEvent(input: CalendarEventWritable) {
+    if (runtime.status === 'missing') {
+      setEventError(runtime.message);
+      return;
+    }
+
+    setEventOperation('creating');
+    setEventError(undefined);
+    setEventNotice(undefined);
+
+    try {
+      const event = await runtime.repository.createEvent({
+        ...input,
+        coupleId: relationship.couple.id,
+        createdBy: currentUserId,
+      });
+
+      upsertLoadedEvent(event);
+      selectEventDate(event);
+      refreshEvents();
+      setEventPanel(null);
+      onCreateClosed?.();
+      setEventNotice('Event created.');
+    } catch (error) {
+      setEventError(getSafeCalendarErrorMessage(error));
+    } finally {
+      setEventOperation('idle');
+    }
+  }
+
+  async function handleUpdateEvent(event: CalendarEvent, input: CalendarEventWritable) {
+    if (runtime.status === 'missing') {
+      setEventError(runtime.message);
+      return;
+    }
+
+    setEventOperation('updating');
+    setEventError(undefined);
+    setEventNotice(undefined);
+
+    try {
+      const updatedEvent = await runtime.repository.updateEvent({
+        ...input,
+        coupleId: relationship.couple.id,
+        eventId: event.id,
+        expectedVersion: event.version,
+      });
+
+      upsertLoadedEvent(updatedEvent);
+      selectEventDate(updatedEvent);
+      refreshEvents();
+      setEventPanel({ eventId: updatedEvent.id, kind: 'details' });
+      setEventNotice('Event updated.');
+    } catch (error) {
+      setEventError(getSafeCalendarErrorMessage(error));
+    } finally {
+      setEventOperation('idle');
+    }
+  }
+
+  async function handleDeleteEvent(event: CalendarEvent) {
+    if (runtime.status === 'missing') {
+      setEventError(runtime.message);
+      return;
+    }
+
+    setEventOperation('deleting');
+    setEventError(undefined);
+    setEventNotice(undefined);
+
+    try {
+      await runtime.repository.deleteEvent({
+        coupleId: relationship.couple.id,
+        eventId: event.id,
+        expectedVersion: event.version,
+      });
+
+      removeLoadedEvent(event.id);
+      refreshEvents();
+      setDeleteTarget(null);
+      setEventPanel(null);
+      setEventNotice('Event deleted.');
+    } catch (error) {
+      setEventError(getSafeCalendarErrorMessage(error));
+    } finally {
+      setEventOperation('idle');
+    }
+  }
+
   return (
     <div className="cc-shared-calendar">
       <div className="cc-calendar-summary">
@@ -382,8 +696,26 @@ export function SharedCalendar({
           <p className="cc-calendar-summary__label">Shared calendar</p>
           <p className="cc-calendar-summary__name">{relationship.couple.name}</p>
         </div>
-        <MemberLegend members={relationship.members} />
+        <div className="cc-calendar-summary__actions">
+          <MemberLegend members={relationship.members} />
+          <Button onClick={openCreatePanel} variant="primary">
+            <PlusIcon />
+            Add event
+          </Button>
+        </div>
       </div>
+
+      {eventNotice ? (
+        <StatusBanner title="Event saved" tone="success">
+          <p>{eventNotice}</p>
+        </StatusBanner>
+      ) : null}
+
+      {eventError ? (
+        <StatusBanner title="Event action failed" tone="error">
+          <p>{eventError}</p>
+        </StatusBanner>
+      ) : null}
 
       <div className="cc-calendar-toolbar" aria-label="Calendar navigation">
         <Button
@@ -460,12 +792,116 @@ export function SharedCalendar({
         events={selectedEvents}
         loadState={activeLoadState}
         members={relationship.members}
+        onEventOpen={(event) => {
+          setEventError(undefined);
+          setEventNotice(undefined);
+          setEventPanel({ eventId: event.id, kind: 'details' });
+        }}
         onRetry={() => {
-          setRetryToken((value) => value + 1);
+          refreshEvents();
         }}
         selectedDate={selectedDate}
         timeZone={timeZone}
       />
+
+      <Sheet
+        closeLabel="Close event panel"
+        onClose={closeEventPanel}
+        open={eventPanel !== null}
+        title={
+          eventPanel?.kind === 'create'
+            ? 'Create event'
+            : eventPanel?.kind === 'edit'
+              ? 'Edit event'
+              : (activeEvent?.title ?? 'Event details')
+        }
+      >
+        {eventPanel?.kind === 'create' ? (
+          <EventForm
+            defaultInput={createFormInput}
+            error={eventError}
+            isSaving={eventOperation === 'creating'}
+            key={`create-${toDateKey(selectedDate)}`}
+            onCancel={closeEventPanel}
+            onSubmit={(input) => {
+              void handleCreateEvent(input);
+            }}
+            submitLabel="Create event"
+          />
+        ) : null}
+
+        {eventPanel?.kind === 'details' && activeEvent ? (
+          <EventDetails
+            event={activeEvent}
+            members={relationship.members}
+            onDelete={(event) => {
+              setDeleteTarget(event);
+            }}
+            onEdit={(event) => {
+              setEventError(undefined);
+              setEventPanel({ eventId: event.id, kind: 'edit' });
+            }}
+            timeZone={timeZone}
+          />
+        ) : null}
+
+        {eventPanel?.kind === 'edit' && activeEvent ? (
+          <EventForm
+            defaultInput={getCalendarEventFormInputFromEvent(activeEvent)}
+            error={eventError}
+            isSaving={eventOperation === 'updating'}
+            key={`edit-${activeEvent.id}-${String(activeEvent.version)}`}
+            onCancel={() => {
+              setEventError(undefined);
+              setEventPanel({ eventId: activeEvent.id, kind: 'details' });
+            }}
+            onSubmit={(input) => {
+              void handleUpdateEvent(activeEvent, input);
+            }}
+            submitLabel="Save changes"
+          />
+        ) : null}
+
+        {eventPanel && eventPanel.kind !== 'create' && !activeEvent ? (
+          <EmptyState title="Event unavailable">
+            <p>Refresh the shared calendar to load the latest event state.</p>
+          </EmptyState>
+        ) : null}
+      </Sheet>
+
+      <Dialog
+        destructive
+        footer={
+          <>
+            <Button
+              onClick={() => {
+                setDeleteTarget(null);
+              }}
+              variant="ghost"
+            >
+              Cancel
+            </Button>
+            <Button
+              isLoading={eventOperation === 'deleting'}
+              onClick={() => {
+                if (deleteTarget) {
+                  void handleDeleteEvent(deleteTarget);
+                }
+              }}
+              variant="destructive"
+            >
+              Delete event
+            </Button>
+          </>
+        }
+        onClose={() => {
+          setDeleteTarget(null);
+        }}
+        open={deleteTarget !== null}
+        title="Delete event"
+      >
+        <p>This removes the event from the shared calendar for both members.</p>
+      </Dialog>
     </div>
   );
 }

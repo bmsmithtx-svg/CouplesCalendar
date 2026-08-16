@@ -8,37 +8,55 @@ export type Database = {
           couple_id: string;
           created_at: string;
           created_by: string;
+          deleted_at: string | null;
           description: string | null;
           ends_at: string;
           id: string;
           is_all_day: boolean;
+          location: string | null;
           starts_at: string;
+          status: string;
+          timezone: string;
           title: string;
           updated_at: string;
+          updated_by: string | null;
+          version: number;
         };
         Insert: {
           couple_id: string;
           created_at?: string;
           created_by: string;
+          deleted_at?: string | null;
           description?: string | null;
           ends_at: string;
           id?: string;
           is_all_day?: boolean;
+          location?: string | null;
           starts_at: string;
+          status?: string;
+          timezone?: string;
           title: string;
           updated_at?: string;
+          updated_by?: string | null;
+          version?: number;
         };
         Update: {
           couple_id?: string;
           created_at?: string;
           created_by?: string;
+          deleted_at?: string | null;
           description?: string | null;
           ends_at?: string;
           id?: string;
           is_all_day?: boolean;
+          location?: string | null;
           starts_at?: string;
+          status?: string;
+          timezone?: string;
           title?: string;
           updated_at?: string;
+          updated_by?: string | null;
+          version?: number;
         };
         Relationships: [
           {
@@ -50,6 +68,12 @@ export type Database = {
           {
             columns: ['created_by'];
             foreignKeyName: 'calendar_events_created_by_fkey';
+            referencedColumns: ['id'];
+            referencedRelation: 'profiles';
+          },
+          {
+            columns: ['updated_by'];
+            foreignKeyName: 'calendar_events_updated_by_fkey';
             referencedColumns: ['id'];
             referencedRelation: 'profiles';
           },

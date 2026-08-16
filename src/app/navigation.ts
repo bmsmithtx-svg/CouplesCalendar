@@ -26,9 +26,8 @@ export const destinationConfig: Record<DestinationId, DestinationConfig> = {
   add: {
     id: 'add',
     label: 'Add event',
-    heading: 'Add event placeholder',
-    description:
-      'An accessible action target reserved for the later event workflow. No event form is implemented here.',
+    heading: 'Add event',
+    description: 'Create a single event in the active shared calendar.',
   },
   categories: {
     id: 'categories',
