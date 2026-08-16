@@ -61,12 +61,17 @@ const eventColumns =
   'id, couple_id, created_by, updated_by, title, description, location, starts_at, ends_at, is_all_day, timezone, version, created_at, updated_at';
 
 async function runQuery<T>(query: QueryBuilder): Promise<QueryResponse<T>> {
-  const { data, error } = await query;
-
-  return {
+  const { count, data, error } = await query;
+  const response: QueryResponse<T> = {
     data: data as T,
     error,
   };
+
+  if (count !== undefined) {
+    response.count = count;
+  }
+
+  return response;
 }
 
 function throwQueryError(error: QueryError): never {

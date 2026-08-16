@@ -488,4 +488,50 @@ describe('createSupabaseCalendarRepository', () => {
       status: 'deleted',
     });
   });
+
+  it('reports a conflict when a soft delete matches no rows', async () => {
+    const { client, queryLog } = createFakeSupabase({
+      calendar_events: [
+        {
+          couple_id: 'couple-1',
+          created_at: '2026-08-01T00:00:00.000Z',
+          created_by: 'user-1',
+          description: null,
+          ends_at: '2026-08-12T22:00:00.000Z',
+          id: 'event-1',
+          is_all_day: false,
+          location: null,
+          starts_at: '2026-08-12T21:00:00.000Z',
+          status: 'active',
+          timezone: 'America/Chicago',
+          title: 'Dinner',
+          updated_at: '2026-08-01T00:00:00.000Z',
+          updated_by: null,
+          version: 4,
+        },
+      ],
+    });
+
+    await expect(
+      createSupabaseCalendarRepository(client).deleteEvent({
+        coupleId: 'couple-1',
+        eventId: 'event-1',
+        expectedVersion: 3,
+      }),
+    ).rejects.toThrow('calendar_event_conflict');
+
+    expect(queryLog[0]).toMatchObject({
+      filters: [
+        { column: 'id', kind: 'eq', value: 'event-1' },
+        { column: 'couple_id', kind: 'eq', value: 'couple-1' },
+        { column: 'version', kind: 'eq', value: 3 },
+        { column: 'status', kind: 'eq', value: 'active' },
+      ],
+      mutation: {
+        kind: 'update',
+        options: { count: 'exact' },
+      },
+      table: 'calendar_events',
+    });
+  });
 });
