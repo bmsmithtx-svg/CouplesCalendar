@@ -633,3 +633,27 @@ Milestone 4 adds the first runtime database migration for the relationship layer
 
 Milestone 4 does not create event, category, recurrence, reminder, notification, realtime, or PWA
 tables. Those remain assigned to later milestones.
+
+## Milestone 5 and 6 Implementation Notes
+
+Milestone 5 creates the current runtime `calendar_events` table for private shared calendar reads:
+
+- `calendar_events` stores the couple, creator, title, description, UTC start/end instants,
+  all-day flag, and created/updated timestamps.
+- RLS grants authenticated active couple members read access only to events owned by their active
+  couple.
+- Milestone 5 grants no event insert, update, or delete capability.
+
+Milestone 6 extends that storage for live-verified event management:
+
+- `location`, `timezone`, `updated_by`, `status`, `deleted_at`, and `version` are added to
+  `calendar_events`.
+- Timed and all-day event writes carry an IANA timezone, and active event reads continue to filter
+  by the active couple.
+- Event edits and deletes use the `version` field as an optimistic concurrency predicate.
+- Deletes are soft deletes through `status = 'deleted'` plus `deleted_at`; normal shared calendar
+  reads continue to show only active events.
+- Repair migrations allow either active couple member to update or soft-delete active events while
+  preserving couple-scoped RLS.
+- Milestone 6 does not implement recurrence, category persistence or management, search and filters,
+  realtime collaboration, reminders, notifications, PWA behavior, or external calendar sync.

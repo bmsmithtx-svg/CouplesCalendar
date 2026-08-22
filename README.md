@@ -22,12 +22,22 @@ Milestone 3 is complete and owner-approved. It adds Supabase Auth integration, g
 startup, sign-up/sign-in/sign-out/password-reset surfaces, user-owned profile setup and editing, and
 the RLS-protected `profiles` migration.
 
-Milestone 4 is implemented and awaiting owner review. It adds the couple workspace schema,
-membership slots, one-time invitation RPCs, RLS-protected relationship reads, and the authenticated
-couple creation/invitation UI.
+Milestone 4 is complete and owner-approved. It adds the couple workspace schema, membership slots,
+one-time invitation RPCs, RLS-protected relationship reads, and the authenticated couple
+creation/invitation UI.
 
-Calendar data, event workflow, recurrence, notification, PWA installation behavior, external
-calendar synchronization, and deployment functionality are not implemented yet.
+Milestone 5 is complete, live-verified, and owner-approved. It adds private shared calendar viewing
+for active couple members.
+
+Milestone 6 is complete and live-verified. It adds all-day and timed event creation, details,
+editing, optimistic version checks, and soft deletion. Milestone 6 is awaiting owner review and
+approval before Milestone 7 may begin.
+
+Milestone 7 is not started and is unauthorized until Milestone 6 is owner-reviewed and approved.
+
+Recurrence, category management, search and filters, realtime collaboration, notifications, PWA
+installation behavior, external calendar synchronization, deployment functionality, and later AI
+scheduling features are not implemented yet.
 
 ## Milestone 1 Contracts
 

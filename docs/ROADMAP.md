@@ -6,9 +6,10 @@ This roadmap is the authoritative Phase 1 sequence for CouplesCalendar. Mileston
 reordered, combined, skipped, renamed, or implemented early without owner approval.
 
 Milestone 0 is complete and owner-approved. Milestone 1 is complete and owner-approved. Milestone 2
-is complete and owner-approved. Milestone 3 is complete and owner-approved. Milestone 4 is
-implemented and awaiting owner review. Milestones 5 through 11 are not started and are unauthorized
-until the prior milestone is reviewed and approved.
+is complete and owner-approved. Milestone 3 is complete and owner-approved. Milestone 4 is complete
+and owner-approved. Milestone 5 is complete, live-verified, and owner-approved. Milestone 6 is
+complete and live-verified, and is awaiting owner review and approval. Milestones 7 through 11 are
+not started and are unauthorized until the prior milestone is reviewed and approved.
 
 ## Locked Sequence
 
@@ -164,7 +165,7 @@ Dependencies:
 
 ### 4. Couple Creation, Invitation, and Membership Security
 
-Status: implemented and awaiting owner review.
+Status: complete and owner-approved.
 
 Objective: implement the exactly-two-member couple workspace lifecycle.
 
@@ -198,7 +199,7 @@ Dependencies:
 
 ### 5. Shared Calendar Viewing
 
-Status: not started; unauthorized until Milestone 4 is reviewed and approved.
+Status: complete, live-verified, and owner-approved.
 
 Objective: implement private shared calendar reading for active couple members.
 
@@ -222,6 +223,8 @@ Explicit exclusions:
 Acceptance gate:
 
 - Both members see the same private calendar data and no other couple's data under RLS.
+- Live verification confirms the shared calendar loads the same couple-scoped event data for both
+  active members.
 
 Dependencies:
 
@@ -229,7 +232,7 @@ Dependencies:
 
 ### 6. Event Creation and Management
 
-Status: not started; unauthorized until Milestone 5 is reviewed and approved.
+Status: complete and live-verified; awaiting owner review and approval.
 
 Objective: implement all-day and timed event creation, details, editing, and deletion.
 
@@ -239,7 +242,7 @@ Required outcomes:
 - Event create/edit form.
 - All-day and timed event validation.
 - UTC plus IANA timezone handling.
-- Location, description, and category association fields.
+- Location and description fields.
 - Soft delete behavior.
 - Optimistic concurrency field included in event writes.
 
@@ -254,6 +257,9 @@ Explicit exclusions:
 Acceptance gate:
 
 - Active couple members can manage valid events and cannot write across couple boundaries.
+- Live verification confirms create, detail, edit, version-checked update, and soft-delete workflows
+  against the shared calendar.
+- Owner review and approval are required before Milestone 7 begins.
 
 Dependencies:
 
@@ -420,6 +426,6 @@ Dependencies:
 
 ## Scope Guard
 
-Only the current authorized milestone may be implemented. Milestone 4 implementation does not
-authorize Milestone 5. No future milestone begins until the prior milestone is reviewed and
+Only the current authorized milestone may be implemented. Completion or live verification does not
+replace required owner approval. Milestone 7 must not begin until Milestone 6 is reviewed and
 approved.

@@ -16,8 +16,8 @@ contract unless the owner approves a formal amendment.
 - Repository URL: `https://github.com/bmsmithtx-svg/CouplesCalendar`
 - Canonical local path: `/Users/bmsm1th/Documents/CouplesCalendar`
 - Phase: Phase 1
-- Current implementation status: Milestone 4 - Couple Creation, Invitation, and Membership Security
-  is implemented and awaiting owner review.
+- Current implementation status: Milestone 6 - Event Creation and Management is complete and
+  live-verified. Milestone 6 is awaiting owner review and approval before Milestone 7 may begin.
 
 ## Product Principles
 
@@ -338,26 +338,26 @@ The following are excluded from Phase 1:
 
 ## Product Acceptance Criteria
 
-| Workflow               | Acceptance criteria                                                                                                                   | Implementation milestone |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
-| Repository foundation  | App renders the approved Milestone 0 foundation screen and validation is green.                                                       | 0                        |
-| Product contract       | Product, architecture, data, security, and roadmap docs exist and are internally consistent.                                          | 1                        |
-| App shell              | Mobile-first app shell, responsive layout primitives, and accessible navigation exist without calendar functionality.                 | 2                        |
-| Authentication         | Users can sign up, sign in, sign out, resume sessions, and complete required profiles.                                                | 3                        |
-| Couple creation        | Authenticated users with complete profiles can create one active couple workspace.                                                    | 4                        |
-| Invitations            | One-time expiring invitations can be created, revoked, accepted atomically, and rejected safely when invalid.                         | 4                        |
-| Two-member enforcement | The database prevents more than two active members and prevents one user from joining multiple active couples.                        | 4                        |
-| Calendar viewing       | Active members can view the same private month and agenda-oriented calendar on phone and MacBook.                                     | 5                        |
-| Event management       | Active members can create, view, edit, and delete all-day and timed events with timezone, location, description, and category fields. | 6                        |
-| Recurrence             | Members can create recurring series and edit or delete one occurrence or the whole series.                                            | 7                        |
-| Categories             | Members can manage couple-scoped categories and filter events by category.                                                            | 7                        |
-| Search and filters     | Members can search and filter only within their active couple's calendar data.                                                        | 7                        |
-| Realtime updates       | Partner changes appear without manual refresh while maintaining one active subscription per couple context.                           | 8                        |
-| Conflict handling      | Saves detect stale edits and show a clear conflict state instead of overwriting silently.                                             | 8                        |
-| Reminders              | Members can configure reminder and notification preferences within browser capability limits.                                         | 9                        |
-| PWA                    | The app is installable and clearly distinguishes offline, stale, and reconnecting states.                                             | 9                        |
-| Quality gate           | Accessibility, security review, validation scripts, and automated tests cover the implemented Phase 1 surface.                        | 10                       |
-| Release                | Production deployment is validated without adding out-of-scope external calendar synchronization.                                     | 11                       |
+| Workflow               | Acceptance criteria                                                                                                         | Implementation milestone |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| Repository foundation  | App renders the approved Milestone 0 foundation screen and validation is green.                                             | 0                        |
+| Product contract       | Product, architecture, data, security, and roadmap docs exist and are internally consistent.                                | 1                        |
+| App shell              | Mobile-first app shell, responsive layout primitives, and accessible navigation exist without calendar functionality.       | 2                        |
+| Authentication         | Users can sign up, sign in, sign out, resume sessions, and complete required profiles.                                      | 3                        |
+| Couple creation        | Authenticated users with complete profiles can create one active couple workspace.                                          | 4                        |
+| Invitations            | One-time expiring invitations can be created, revoked, accepted atomically, and rejected safely when invalid.               | 4                        |
+| Two-member enforcement | The database prevents more than two active members and prevents one user from joining multiple active couples.              | 4                        |
+| Calendar viewing       | Active members can view the same private month and agenda-oriented calendar on phone and MacBook.                           | 5                        |
+| Event management       | Active members can create, view, edit, and delete all-day and timed events with timezone, location, and description fields. | 6                        |
+| Recurrence             | Members can create recurring series and edit or delete one occurrence or the whole series.                                  | 7                        |
+| Categories             | Members can manage couple-scoped categories and filter events by category.                                                  | 7                        |
+| Search and filters     | Members can search and filter only within their active couple's calendar data.                                              | 7                        |
+| Realtime updates       | Partner changes appear without manual refresh while maintaining one active subscription per couple context.                 | 8                        |
+| Conflict handling      | Saves detect stale edits and show a clear conflict state instead of overwriting silently.                                   | 8                        |
+| Reminders              | Members can configure reminder and notification preferences within browser capability limits.                               | 9                        |
+| PWA                    | The app is installable and clearly distinguishes offline, stale, and reconnecting states.                                   | 9                        |
+| Quality gate           | Accessibility, security review, validation scripts, and automated tests cover the implemented Phase 1 surface.              | 10                       |
+| Release                | Production deployment is validated without adding out-of-scope external calendar synchronization.                           | 11                       |
 
 ## Scope Lock
 
