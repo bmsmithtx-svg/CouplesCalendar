@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 
 import { Button } from '../components/ui/Button';
 import { Dialog } from '../components/ui/Dialog';
@@ -12,6 +12,7 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { Surface } from '../components/layout/Surface';
 import { useAuth } from '../features/auth/AuthContext';
 import type { CalendarRepository } from '../features/calendar/calendarTypes';
+import { calendarEventCategories } from '../features/calendar/eventCategories';
 import {
   CoupleContextSummary,
   CoupleHome,
@@ -208,7 +209,10 @@ function DestinationPreview({
   onSheetOpen: () => void;
 }) {
   const active = getDestination(activeDestination);
-  const isCalendarDestination = activeDestination === 'calendar' || activeDestination === 'add';
+  const isCalendarDestination =
+    activeDestination === 'calendar' ||
+    activeDestination === 'add' ||
+    activeDestination === 'search';
 
   return (
     <div className="cc-main__stack">
@@ -236,7 +240,7 @@ function DestinationPreview({
                 variant="secondary"
               >
                 <SearchIcon />
-                Search placeholder
+                Search
               </Button>
               <Button
                 onClick={() => {
@@ -270,14 +274,14 @@ function DestinationBody({ activeDestination }: { activeDestination: Destination
   if (activeDestination === 'search') {
     return (
       <div className="cc-placeholder-grid">
-        <StatusBanner title="Search is reserved" tone="info">
-          Search inputs and filters are represented structurally only; no query logic is active.
+        <StatusBanner title="Search is available" tone="success">
+          Search is available from the shared calendar surface for active couple workspaces.
         </StatusBanner>
         <TextField
           disabled
-          hint="Disabled because search belongs to a later milestone."
+          hint="Open the Search navigation item to use the live calendar search panel."
           label="Search query preview"
-          placeholder="Future event search"
+          placeholder="Event search"
         />
       </div>
     );
@@ -285,11 +289,15 @@ function DestinationBody({ activeDestination }: { activeDestination: Destination
 
   if (activeDestination === 'categories') {
     return (
-      <div className="cc-category-preview" aria-label="Category placeholder preview">
-        {['Shared', 'Logistics', 'Personal'].map((label) => (
-          <span className="cc-category-preview__item" key={label}>
+      <div className="cc-category-preview" aria-label="Supported event categories">
+        {calendarEventCategories.map((category) => (
+          <span
+            className="cc-category-preview__item"
+            key={category.value}
+            style={{ '--cc-category-color': category.color } as CSSProperties}
+          >
             <span className="cc-category-preview__swatch" aria-hidden="true" />
-            {label} placeholder
+            {category.label}
           </span>
         ))}
       </div>

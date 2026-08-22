@@ -8,8 +8,9 @@ reordered, combined, skipped, renamed, or implemented early without owner approv
 Milestone 0 is complete and owner-approved. Milestone 1 is complete and owner-approved. Milestone 2
 is complete and owner-approved. Milestone 3 is complete and owner-approved. Milestone 4 is complete
 and owner-approved. Milestone 5 is complete, live-verified, and owner-approved. Milestone 6 is
-complete and live-verified, and is awaiting owner review and approval. Milestones 7 through 11 are
-not started and are unauthorized until the prior milestone is reviewed and approved.
+complete and live-verified, and is awaiting owner review and approval. Milestone 7 is complete and
+validated, and is awaiting owner review and approval. Milestones 8 through 11 are not started and
+are unauthorized until the prior milestone is reviewed and approved.
 
 ## Locked Sequence
 
@@ -267,22 +268,27 @@ Dependencies:
 
 ### 7. Recurrence, Categories, Search, and Filters
 
-Status: not started; unauthorized until Milestone 6 is reviewed and approved.
+Status: complete and validated; awaiting owner review and approval.
 
 Objective: complete event organization and discovery.
 
 Required outcomes:
 
-- Category management with couple-scoped colors.
+- Fixed event categories with labels and swatch colors.
+- Category persistence on calendar events.
 - Search across title, location, description, and category name.
-- Filters for category, date range, all-day/timed, recurrence, and reminders.
-- RFC 5545-style recurrence creation.
-- Deterministic recurrence expansion for visible ranges.
-- One-occurrence edit and delete through occurrence overrides.
+- Category filters that combine with search and visible calendar rendering.
+- RFC 5545-style daily, weekly, and monthly recurrence creation with interval 1.
+- Optional recurrence end dates.
+- Deterministic timezone-aware recurrence expansion for visible ranges.
 - Entire-series edit and delete.
 
 Explicit exclusions:
 
+- Custom couple-managed category CRUD.
+- Date range, all-day/timed, recurrence, and reminder filters.
+- Per-occurrence recurrence overrides or cancellations.
+- "This and future" split-series editing.
 - External calendar import/export.
 - More than two members.
 - AI scheduling.
@@ -290,11 +296,13 @@ Explicit exclusions:
 
 Acceptance gate:
 
-- Recurring and overridden occurrences render correctly in FullCalendar and remain couple-isolated.
+- Validation gate passes with formatting, lint, typecheck, tests, and production build.
+- Recurring occurrences render correctly in the shared calendar and remain couple-isolated.
+- Search returns matching recurring master events once rather than unbounded occurrences.
 
 Dependencies:
 
-- Milestone 6 approved.
+- Milestone 6 complete and live-verified.
 
 ### 8. Realtime Collaboration and Conflict Handling
 

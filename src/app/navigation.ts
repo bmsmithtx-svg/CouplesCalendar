@@ -19,9 +19,8 @@ export const destinationConfig: Record<DestinationId, DestinationConfig> = {
     id: 'search',
     label: 'Search',
     desktopLabel: 'Search and filters',
-    heading: 'Search and filters shell',
-    description:
-      'A nonfunctional destination that reserves space for later couple-scoped search controls.',
+    heading: 'Search and filters',
+    description: 'Search active shared events and combine event text with category filters.',
   },
   add: {
     id: 'add',
@@ -32,9 +31,8 @@ export const destinationConfig: Record<DestinationId, DestinationConfig> = {
   categories: {
     id: 'categories',
     label: 'Categories',
-    heading: 'Categories shell',
-    description:
-      'A desktop placeholder for future couple-scoped event categories without category data.',
+    heading: 'Categories',
+    description: 'Reference the supported event categories used by the shared calendar.',
   },
   settings: {
     id: 'settings',

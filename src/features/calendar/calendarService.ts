@@ -2,11 +2,16 @@ import type {
   CalendarEvent,
   CalendarEventCreateInput,
   CalendarEventDeleteInput,
+  CalendarEventSearchQuery,
   CalendarEventUpdateInput,
   CalendarRepository,
 } from './calendarTypes';
+import { filterCalendarEvents } from './calendarSearch';
+import { normalizeCalendarEventCategory } from './eventCategories';
+import { expandRecurringEventsForRange, isSupportedRecurrenceRule } from './eventRecurrence';
 
 type CalendarEventRow = {
+  category?: string | null;
   couple_id: string;
   created_at: string;
   created_by: string;
@@ -16,6 +21,8 @@ type CalendarEventRow = {
   id: string;
   is_all_day: boolean;
   location: string | null;
+  recurrence_ends_at?: string | null;
+  recurrence_rule?: string | null;
   starts_at: string;
   status?: string;
   timezone: string;
@@ -58,7 +65,7 @@ type CalendarSupabaseClient = {
 };
 
 const eventColumns =
-  'id, couple_id, created_by, updated_by, title, description, location, starts_at, ends_at, is_all_day, timezone, version, created_at, updated_at';
+  'id, couple_id, created_by, updated_by, title, description, location, category, recurrence_rule, recurrence_ends_at, starts_at, ends_at, is_all_day, timezone, version, created_at, updated_at';
 
 async function runQuery<T>(query: QueryBuilder): Promise<QueryResponse<T>> {
   const { count, data, error } = await query;
@@ -80,6 +87,9 @@ function throwQueryError(error: QueryError): never {
 
 function mapEvent(row: CalendarEventRow, profilesById: Map<string, ProfileNameRow>): CalendarEvent {
   return {
+    baseEndsAt: row.ends_at,
+    baseStartsAt: row.starts_at,
+    category: normalizeCalendarEventCategory(row.category),
     coupleId: row.couple_id,
     createdAt: row.created_at,
     createdBy: row.created_by,
@@ -89,6 +99,11 @@ function mapEvent(row: CalendarEventRow, profilesById: Map<string, ProfileNameRo
     id: row.id,
     isAllDay: row.is_all_day,
     location: row.location,
+    recurrenceEndsAt: row.recurrence_ends_at ?? null,
+    recurrenceRule: isSupportedRecurrenceRule(row.recurrence_rule)
+      ? (row.recurrence_rule ?? null)
+      : null,
+    seriesId: row.id,
     startsAt: row.starts_at,
     timeZone: row.timezone,
     title: row.title,
@@ -100,10 +115,13 @@ function mapEvent(row: CalendarEventRow, profilesById: Map<string, ProfileNameRo
 
 function mapWritableEvent(input: CalendarEventCreateInput | CalendarEventUpdateInput) {
   return {
+    category: input.category,
     description: input.description,
     ends_at: input.endsAt,
     is_all_day: input.isAllDay,
     location: input.location,
+    recurrence_ends_at: input.recurrenceEndsAt,
+    recurrence_rule: input.recurrenceRule,
     starts_at: input.startsAt,
     timezone: input.timeZone,
     title: input.title,
@@ -134,6 +152,15 @@ async function getProfilesById(
   }
 
   return new Map(data.map((profile) => [profile.id, profile]));
+}
+
+async function mapRowsWithProfiles(client: unknown, rows: CalendarEventRow[]) {
+  const profilesById = await getProfilesById(
+    client,
+    rows.map((event) => event.created_by),
+  );
+
+  return rows.map((event) => mapEvent(event, profilesById));
 }
 
 export function createSupabaseCalendarRepository(client: unknown): CalendarRepository {
@@ -196,7 +223,6 @@ export function createSupabaseCalendarRepository(client: unknown): CalendarRepos
           .eq('couple_id', coupleId)
           .eq('status', 'active')
           .lt('starts_at', rangeEnd)
-          .gt('ends_at', rangeStart)
           .order('starts_at', { ascending: true })
           .order('title', { ascending: true }),
       );
@@ -205,12 +231,32 @@ export function createSupabaseCalendarRepository(client: unknown): CalendarRepos
         throwQueryError(error);
       }
 
-      const profilesById = await getProfilesById(
-        client,
-        data.map((event) => event.created_by),
+      return expandRecurringEventsForRange({
+        events: await mapRowsWithProfiles(client, data),
+        rangeEnd,
+        rangeStart,
+      });
+    },
+
+    async searchEventsForCouple({ categories, coupleId, query }: CalendarEventSearchQuery) {
+      const { data, error } = await runQuery<CalendarEventRow[]>(
+        db
+          .from('calendar_events')
+          .select(eventColumns)
+          .eq('couple_id', coupleId)
+          .eq('status', 'active')
+          .order('starts_at', { ascending: true })
+          .order('title', { ascending: true }),
       );
 
-      return data.map((event) => mapEvent(event, profilesById));
+      if (error) {
+        throwQueryError(error);
+      }
+
+      return filterCalendarEvents(await mapRowsWithProfiles(client, data), {
+        categories,
+        query,
+      });
     },
 
     async updateEvent(input) {

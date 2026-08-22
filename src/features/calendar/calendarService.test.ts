@@ -300,7 +300,6 @@ describe('createSupabaseCalendarRepository', () => {
         { column: 'couple_id', kind: 'eq', value: 'couple-1' },
         { column: 'status', kind: 'eq', value: 'active' },
         { column: 'starts_at', kind: 'lt', value: '2026-09-01T00:00:00.000Z' },
-        { column: 'ends_at', kind: 'gt', value: '2026-08-01T00:00:00.000Z' },
       ],
       orders: [
         { ascending: true, column: 'starts_at' },
@@ -326,12 +325,15 @@ describe('createSupabaseCalendarRepository', () => {
     });
 
     const event = await createSupabaseCalendarRepository(client).createEvent({
+      category: 'date',
       coupleId: 'couple-1',
       createdBy: 'user-1',
       description: 'Bring tickets',
       endsAt: '2026-08-12T23:00:00.000Z',
       isAllDay: false,
       location: 'Cinema',
+      recurrenceEndsAt: null,
+      recurrenceRule: null,
       startsAt: '2026-08-12T21:00:00.000Z',
       timeZone: 'America/Chicago',
       title: 'Movie night',
@@ -361,7 +363,126 @@ describe('createSupabaseCalendarRepository', () => {
     expect(createMutation.values).toMatchObject({
       couple_id: 'couple-1',
       created_by: 'user-1',
+      category: 'date',
+      recurrence_ends_at: null,
+      recurrence_rule: null,
       timezone: 'America/Chicago',
+    });
+  });
+
+  it('expands recurring events only within the requested range', async () => {
+    const { client } = createFakeSupabase({
+      calendar_events: [
+        {
+          category: 'work',
+          couple_id: 'couple-1',
+          created_at: '2026-08-01T00:00:00.000Z',
+          created_by: 'user-1',
+          description: null,
+          ends_at: '2026-08-05T15:00:00.000Z',
+          id: 'event-weekly',
+          is_all_day: false,
+          location: null,
+          recurrence_ends_at: '2026-08-31T04:59:00.000Z',
+          recurrence_rule: 'FREQ=WEEKLY;INTERVAL=1;UNTIL=20260831T045900Z',
+          starts_at: '2026-08-05T14:00:00.000Z',
+          status: 'active',
+          timezone: 'America/Chicago',
+          title: 'Planning',
+          updated_at: '2026-08-01T00:00:00.000Z',
+          updated_by: null,
+          version: 1,
+        },
+      ],
+      profiles: [
+        {
+          display_name: 'Alex',
+          id: 'user-1',
+        },
+      ],
+    });
+
+    const events = await createSupabaseCalendarRepository(client).listEventsForCouple({
+      coupleId: 'couple-1',
+      rangeEnd: '2026-08-19T00:00:00.000Z',
+      rangeStart: '2026-08-12T00:00:00.000Z',
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      category: 'work',
+      id: 'event-weekly__20260812140000000',
+      recurrenceRule: 'FREQ=WEEKLY;INTERVAL=1;UNTIL=20260831T045900Z',
+      seriesId: 'event-weekly',
+      startsAt: '2026-08-12T14:00:00.000Z',
+      title: 'Planning',
+    });
+  });
+
+  it('searches active same-couple series by text and category without expanding recurrence', async () => {
+    const { client, queryLog } = createFakeSupabase({
+      calendar_events: [
+        {
+          category: 'date',
+          couple_id: 'couple-1',
+          created_at: '2026-08-01T00:00:00.000Z',
+          created_by: 'user-1',
+          description: 'Bring tickets',
+          ends_at: '2026-08-12T23:00:00.000Z',
+          id: 'event-1',
+          is_all_day: false,
+          location: 'Cinema',
+          recurrence_ends_at: null,
+          recurrence_rule: 'FREQ=DAILY;INTERVAL=1',
+          starts_at: '2026-08-12T21:00:00.000Z',
+          status: 'active',
+          timezone: 'America/Chicago',
+          title: 'Movie night',
+          updated_at: '2026-08-01T00:00:00.000Z',
+          updated_by: null,
+          version: 1,
+        },
+        {
+          category: 'work',
+          couple_id: 'couple-1',
+          created_at: '2026-08-01T00:00:00.000Z',
+          created_by: 'user-1',
+          description: 'Bring tickets',
+          ends_at: '2026-08-12T23:00:00.000Z',
+          id: 'event-2',
+          is_all_day: false,
+          location: 'Office',
+          starts_at: '2026-08-12T21:00:00.000Z',
+          status: 'active',
+          timezone: 'America/Chicago',
+          title: 'Work night',
+          updated_at: '2026-08-01T00:00:00.000Z',
+          updated_by: null,
+          version: 1,
+        },
+      ],
+      profiles: [
+        {
+          display_name: 'Alex',
+          id: 'user-1',
+        },
+      ],
+    });
+
+    const events = await createSupabaseCalendarRepository(client).searchEventsForCouple({
+      categories: ['date'],
+      coupleId: 'couple-1',
+      query: 'tickets',
+    });
+
+    expect(events.map((event) => event.id)).toEqual(['event-1']);
+    expect(events[0]?.recurrenceRule).toBe('FREQ=DAILY;INTERVAL=1');
+    expect(queryLog[0]).toMatchObject({
+      filters: [
+        { column: 'couple_id', kind: 'eq', value: 'couple-1' },
+        { column: 'status', kind: 'eq', value: 'active' },
+      ],
+      table: 'calendar_events',
     });
   });
 
@@ -395,6 +516,7 @@ describe('createSupabaseCalendarRepository', () => {
     });
 
     const event = await createSupabaseCalendarRepository(client).updateEvent({
+      category: 'appointment',
       coupleId: 'couple-1',
       description: 'Updated notes',
       endsAt: '2026-08-12T23:00:00.000Z',
@@ -402,6 +524,8 @@ describe('createSupabaseCalendarRepository', () => {
       expectedVersion: 3,
       isAllDay: false,
       location: 'New spot',
+      recurrenceEndsAt: null,
+      recurrenceRule: null,
       startsAt: '2026-08-12T21:30:00.000Z',
       timeZone: 'America/Chicago',
       title: 'Dinner updated',
@@ -433,6 +557,7 @@ describe('createSupabaseCalendarRepository', () => {
     }
 
     expect(updateMutation.values).toMatchObject({
+      category: 'appointment',
       title: 'Dinner updated',
     });
   });

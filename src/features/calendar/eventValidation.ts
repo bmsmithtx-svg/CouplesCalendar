@@ -13,13 +13,31 @@ import {
   type CalendarTime,
 } from './calendarDateUtils';
 import type { CalendarEvent, CalendarEventWritable } from './calendarTypes';
+import {
+  defaultCalendarEventCategory,
+  isCalendarEventCategory,
+  type CalendarEventCategory,
+} from './eventCategories';
+import {
+  buildRecurrenceRule,
+  getOccurrenceSeriesEnd,
+  getOccurrenceSeriesStart,
+  getRecurrenceFormValues,
+  getRecurrenceUntilDateEnd,
+  isRecurrenceEndBeforeStart,
+  recurrenceFrequencies,
+  type RecurrenceFormFrequency,
+} from './eventRecurrence';
 
 export type CalendarEventFormInput = {
+  category: CalendarEventCategory;
   description: string;
   endDate: string;
   endTime: string;
   isAllDay: boolean;
   location: string;
+  recurrenceEndDate: string;
+  recurrenceFrequency: RecurrenceFormFrequency;
   startDate: string;
   startTime: string;
   timeZone: string;
@@ -42,6 +60,7 @@ const defaultStartTime = '09:00';
 const defaultEndTime = '10:00';
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const timePattern = /^\d{2}:\d{2}$/;
+const recurrenceFrequencyValues = new Set<string>(['none', ...recurrenceFrequencies]);
 
 function normalizeOptionalText(value: string) {
   const trimmed = value.trim();
@@ -100,11 +119,14 @@ export function getDefaultCalendarEventFormInput({
   const dateKey = toDateKey(selectedDate);
 
   return {
+    category: defaultCalendarEventCategory,
     description: '',
     endDate: dateKey,
     endTime: defaultEndTime,
     isAllDay: false,
     location: '',
+    recurrenceEndDate: '',
+    recurrenceFrequency: 'none',
     startDate: dateKey,
     startTime: defaultStartTime,
     timeZone,
@@ -114,21 +136,29 @@ export function getDefaultCalendarEventFormInput({
 
 export function getCalendarEventFormInputFromEvent(event: CalendarEvent): CalendarEventFormInput {
   const timeZone = event.timeZone;
-  const startDate = getDateInputValueInTimeZone(event.startsAt, timeZone);
+  const startsAt = getOccurrenceSeriesStart(event);
+  const endsAt = getOccurrenceSeriesEnd(event);
+  const recurrence = getRecurrenceFormValues({
+    recurrenceEndsAt: event.recurrenceEndsAt,
+    recurrenceRule: event.recurrenceRule,
+    timeZone,
+  });
+  const startDate = getDateInputValueInTimeZone(startsAt, timeZone);
   const endDate = event.isAllDay
-    ? getInclusiveAllDayEndDateKey(event)
-    : getDateInputValueInTimeZone(event.endsAt, timeZone);
+    ? getInclusiveAllDayEndDateKey({ endsAt, timeZone })
+    : getDateInputValueInTimeZone(endsAt, timeZone);
 
   return {
+    category: event.category,
     description: event.description ?? '',
     endDate,
-    endTime: event.isAllDay ? defaultEndTime : getTimeInputValueInTimeZone(event.endsAt, timeZone),
+    endTime: event.isAllDay ? defaultEndTime : getTimeInputValueInTimeZone(endsAt, timeZone),
     isAllDay: event.isAllDay,
     location: event.location ?? '',
+    recurrenceEndDate: recurrence.untilDate,
+    recurrenceFrequency: recurrence.frequency,
     startDate,
-    startTime: event.isAllDay
-      ? defaultStartTime
-      : getTimeInputValueInTimeZone(event.startsAt, timeZone),
+    startTime: event.isAllDay ? defaultStartTime : getTimeInputValueInTimeZone(startsAt, timeZone),
     timeZone,
     title: event.title,
   };
@@ -141,11 +171,23 @@ export function validateCalendarEventFormInput(
   const title = input.title.trim();
   const description = normalizeOptionalText(input.description);
   const location = normalizeOptionalText(input.location);
+  const category = input.category;
+  const recurrenceFrequency = input.recurrenceFrequency;
+  const recurrenceEndDate = input.recurrenceEndDate.trim();
   const timeZone = input.timeZone.trim();
   const startDate = parseDateInput(input.startDate);
   const endDate = parseDateInput(input.endDate);
+  const parsedRecurrenceEndDate = recurrenceEndDate ? parseDateInput(recurrenceEndDate) : null;
   const startTime = input.isAllDay ? { hour: 0, minute: 0 } : parseTimeInput(input.startTime);
   const endTime = input.isAllDay ? { hour: 0, minute: 0 } : parseTimeInput(input.endTime);
+
+  if (!isCalendarEventCategory(category)) {
+    errors.category = 'Choose a supported category.';
+  }
+
+  if (!recurrenceFrequencyValues.has(recurrenceFrequency)) {
+    errors.recurrenceFrequency = 'Choose a supported repeat option.';
+  }
 
   if (title.length === 0) {
     errors.title = 'Enter an event title.';
@@ -171,6 +213,10 @@ export function validateCalendarEventFormInput(
 
   if (!endDate) {
     errors.endDate = 'Enter a valid end date.';
+  }
+
+  if (recurrenceEndDate && !parsedRecurrenceEndDate) {
+    errors.recurrenceEndDate = 'Enter a valid recurrence end date.';
   }
 
   if (!input.isAllDay && !startTime) {
@@ -220,13 +266,50 @@ export function validateCalendarEventFormInput(
     };
   }
 
+  if (
+    recurrenceFrequency !== 'none' &&
+    recurrenceEndDate &&
+    isRecurrenceEndBeforeStart({
+      recurrenceEndDate,
+      startDate: input.startDate,
+    })
+  ) {
+    return {
+      errors: {
+        recurrenceEndDate: 'Repeat end date cannot be before the first occurrence.',
+      },
+      ok: false,
+    };
+  }
+
+  const recurrenceEndsAt =
+    recurrenceFrequency !== 'none' && parsedRecurrenceEndDate
+      ? getRecurrenceUntilDateEnd({ dateKey: recurrenceEndDate, timeZone }).toISOString()
+      : null;
+  const recurrenceRule = buildRecurrenceRule({
+    frequency: recurrenceFrequency,
+    until: recurrenceEndsAt,
+  });
+
+  if (recurrenceFrequency !== 'none' && !recurrenceRule) {
+    return {
+      errors: {
+        recurrenceFrequency: 'Choose a supported repeat option.',
+      },
+      ok: false,
+    };
+  }
+
   return {
     ok: true,
     values: {
+      category,
       description,
       endsAt: endsAt.toISOString(),
       isAllDay: input.isAllDay,
       location,
+      recurrenceEndsAt,
+      recurrenceRule,
       startsAt: startsAt.toISOString(),
       timeZone,
       title,

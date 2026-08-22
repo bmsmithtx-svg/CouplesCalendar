@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 
 import { Button } from '../../components/ui/Button';
 import { Dialog } from '../../components/ui/Dialog';
@@ -8,7 +8,7 @@ import { StatusBanner } from '../../components/ui/StatusBanner';
 import type { CoupleMember, CoupleRelationship } from '../couples/coupleTypes';
 import { getSupabaseClientStatus } from '../../lib/supabase/client';
 import { cx } from '../../lib/cx';
-import { EditIcon, PlusIcon, TrashIcon } from '../../icons/AppIcons';
+import { EditIcon, PlusIcon, SearchIcon, TrashIcon } from '../../icons/AppIcons';
 import {
   addCalendarMonths,
   buildMonthGrid,
@@ -28,8 +28,16 @@ import {
 } from './calendarDateUtils';
 import { EventForm } from './EventForm';
 import { getSafeCalendarErrorMessage } from './calendarErrors';
+import { filterCalendarEvents, hasActiveCalendarFilters } from './calendarSearch';
 import { createSupabaseCalendarRepository } from './calendarService';
 import type { CalendarEvent, CalendarEventWritable, CalendarRepository } from './calendarTypes';
+import {
+  calendarEventCategories,
+  getCalendarEventCategoryColor,
+  getCalendarEventCategoryLabel,
+  type CalendarEventCategory,
+} from './eventCategories';
+import { getOccurrenceSeriesId, getRecurrenceLabel } from './eventRecurrence';
 import {
   getCalendarEventFormInputFromEvent,
   getDefaultCalendarEventFormInput,
@@ -68,11 +76,30 @@ type EventPanel =
       kind: 'create';
     }
   | {
-      eventId: string;
+      event: CalendarEvent;
       kind: 'details' | 'edit';
     };
 
 type EventOperation = 'creating' | 'deleting' | 'idle' | 'updating';
+
+type CalendarSearchLoadState =
+  | {
+      status: 'idle';
+    }
+  | {
+      queryKey: string;
+      status: 'loading';
+    }
+  | {
+      events: CalendarEvent[];
+      queryKey: string;
+      status: 'ready';
+    }
+  | {
+      message: string;
+      queryKey: string;
+      status: 'error';
+    };
 
 const emptyCalendarEvents: CalendarEvent[] = [];
 
@@ -111,6 +138,50 @@ function getOwnerLabel(event: CalendarEvent, members: CoupleMember[]) {
   const member = getMemberForEvent(event, members);
 
   return member?.displayName ?? event.creatorDisplayName ?? 'Couple member';
+}
+
+function getCategoryStyle(category: CalendarEventCategory): CSSProperties {
+  return {
+    '--cc-category-color': getCalendarEventCategoryColor(category),
+  } as CSSProperties;
+}
+
+function CategoryBadge({ category }: { category: CalendarEventCategory }) {
+  return (
+    <span className="cc-category-badge" style={getCategoryStyle(category)}>
+      <span className="cc-category-badge__swatch" aria-hidden="true" />
+      {getCalendarEventCategoryLabel(category)}
+    </span>
+  );
+}
+
+function isRecurringEvent(event: CalendarEvent) {
+  return event.recurrenceRule !== null;
+}
+
+function getPanelEvent(snapshot: CalendarEvent, events: CalendarEvent[]) {
+  return (
+    events.find((event) => event.id === snapshot.id) ??
+    events.find(
+      (event) =>
+        getOccurrenceSeriesId(event) === getOccurrenceSeriesId(snapshot) &&
+        event.occurrenceStartsAt === snapshot.occurrenceStartsAt,
+    ) ??
+    snapshot
+  );
+}
+
+function toggleCategoryFilter(
+  categories: CalendarEventCategory[],
+  category: CalendarEventCategory,
+) {
+  return categories.includes(category)
+    ? categories.filter((candidate) => candidate !== category)
+    : [...categories, category];
+}
+
+function getSearchStateResultCount(searchState: CalendarSearchLoadState) {
+  return searchState.status === 'ready' ? searchState.events.length : 0;
 }
 
 function getTodayDate(now: Date | undefined, timeZone: string) {
@@ -226,6 +297,131 @@ function EventIndicators({
   );
 }
 
+function SearchAndFilterPanel({
+  categoryFilters,
+  onCategoryToggle,
+  onClear,
+  onQueryChange,
+  onResultOpen,
+  query,
+  searchState,
+}: {
+  categoryFilters: CalendarEventCategory[];
+  onCategoryToggle: (category: CalendarEventCategory) => void;
+  onClear: () => void;
+  onQueryChange: (query: string) => void;
+  onResultOpen: (event: CalendarEvent) => void;
+  query: string;
+  searchState: CalendarSearchLoadState;
+}) {
+  const hasCriteria =
+    query.trim().length > 0 || categoryFilters.length > 0 || searchState.status !== 'idle';
+  const resultCount = getSearchStateResultCount(searchState);
+
+  return (
+    <section className="cc-calendar-search" aria-labelledby="calendar-search-heading">
+      <div className="cc-calendar-search__header">
+        <div>
+          <h3 className="cc-calendar-search__title" id="calendar-search-heading">
+            Search and filters
+          </h3>
+          <p className="cc-calendar-search__meta">
+            {hasCriteria
+              ? `${String(resultCount)} matching ${resultCount === 1 ? 'series' : 'series'}`
+              : 'Search by event text or narrow the visible calendar by category.'}
+          </p>
+        </div>
+        {hasCriteria ? (
+          <Button onClick={onClear} variant="ghost">
+            Clear
+          </Button>
+        ) : null}
+      </div>
+
+      <label className="cc-calendar-search__field">
+        <span className="cc-field__label">
+          <SearchIcon />
+          Search events
+        </span>
+        <input
+          className="cc-input"
+          onChange={(event) => {
+            onQueryChange(event.target.value);
+          }}
+          placeholder="Title, notes, location, or category"
+          type="search"
+          value={query}
+        />
+      </label>
+
+      <div className="cc-category-filter" aria-label="Category filters">
+        {calendarEventCategories.map((category) => {
+          const isSelected = categoryFilters.includes(category.value);
+
+          return (
+            <button
+              aria-pressed={isSelected}
+              className="cc-category-filter__button"
+              key={category.value}
+              onClick={() => {
+                onCategoryToggle(category.value);
+              }}
+              style={getCategoryStyle(category.value)}
+              type="button"
+            >
+              <span className="cc-category-badge__swatch" aria-hidden="true" />
+              {category.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {searchState.status === 'loading' ? <LoadingIndicator label="Searching events" /> : null}
+
+      {searchState.status === 'error' ? (
+        <StatusBanner title="Search unavailable" tone="error">
+          <p>{searchState.message}</p>
+        </StatusBanner>
+      ) : null}
+
+      {searchState.status === 'idle' ? (
+        <EmptyState title="Search is ready">
+          <p>Enter a query or choose a category to search active shared events.</p>
+        </EmptyState>
+      ) : null}
+
+      {searchState.status === 'ready' && searchState.events.length === 0 ? (
+        <EmptyState title="No matching events">
+          <p>Clear search or category filters to return to the full shared calendar.</p>
+        </EmptyState>
+      ) : null}
+
+      {searchState.status === 'ready' && searchState.events.length > 0 ? (
+        <div className="cc-search-results" aria-label="Search results">
+          {searchState.events.map((event) => (
+            <button
+              className="cc-search-result"
+              key={event.id}
+              onClick={() => {
+                onResultOpen(event);
+              }}
+              type="button"
+            >
+              <div className="cc-search-result__body">
+                <span className="cc-search-result__title">{event.title}</span>
+                <span className="cc-search-result__meta">
+                  {formatEventDetailTime(event, event.timeZone)}
+                </span>
+              </div>
+              <CategoryBadge category={event.category} />
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function AgendaEvent({
   event,
   members,
@@ -252,6 +448,10 @@ function AgendaEvent({
       <div className="cc-agenda-event__time">{formatEventTime(event, timeZone)}</div>
       <div className="cc-agenda-event__body">
         <h4 className="cc-agenda-event__title">{event.title}</h4>
+        <div className="cc-agenda-event__meta">
+          <CategoryBadge category={event.category} />
+          {isRecurringEvent(event) ? <span>Repeating series</span> : null}
+        </div>
         <p className="cc-agenda-event__owner">{getOwnerLabel(event, members)}</p>
         {event.location ? <p className="cc-agenda-event__location">{event.location}</p> : null}
         {event.description ? (
@@ -264,6 +464,7 @@ function AgendaEvent({
 
 function AgendaSection({
   events,
+  hasActiveFilters,
   loadState,
   members,
   onEventOpen,
@@ -272,6 +473,7 @@ function AgendaSection({
   timeZone,
 }: {
   events: CalendarEvent[];
+  hasActiveFilters: boolean;
   loadState: CalendarLoadState;
   members: CoupleMember[];
   onEventOpen: (event: CalendarEvent) => void;
@@ -312,8 +514,14 @@ function AgendaSection({
       ) : null}
 
       {loadState.status === 'ready' && events.length === 0 ? (
-        <EmptyState title="No events for this day">
-          <p>Shared events will appear here once they are added.</p>
+        <EmptyState
+          title={hasActiveFilters ? 'No matching events for this day' : 'No events for this day'}
+        >
+          <p>
+            {hasActiveFilters
+              ? 'Clear search or category filters to see all events for this date.'
+              : 'Shared events will appear here once they are added.'}
+          </p>
         </EmptyState>
       ) : null}
 
@@ -347,12 +555,24 @@ function EventDetails({
   onEdit: (event: CalendarEvent) => void;
   timeZone: string;
 }) {
+  const recurring = isRecurringEvent(event);
+
   return (
     <div className="cc-event-details">
       <dl className="cc-event-details__list">
         <div>
           <dt>When</dt>
           <dd>{formatEventDetailTime(event, timeZone)}</dd>
+        </div>
+        <div>
+          <dt>Category</dt>
+          <dd>
+            <CategoryBadge category={event.category} />
+          </dd>
+        </div>
+        <div>
+          <dt>Repeat</dt>
+          <dd>{getRecurrenceLabel(event)}</dd>
         </div>
         <div>
           <dt>Timezone</dt>
@@ -384,7 +604,7 @@ function EventDetails({
           variant="primary"
         >
           <EditIcon />
-          Edit
+          {recurring ? 'Edit series' : 'Edit'}
         </Button>
         <Button
           onClick={() => {
@@ -393,7 +613,7 @@ function EventDetails({
           variant="destructive"
         >
           <TrashIcon />
-          Delete
+          {recurring ? 'Delete series' : 'Delete'}
         </Button>
       </div>
     </div>
@@ -428,6 +648,9 @@ export function SharedCalendar({
   const [eventError, setEventError] = useState<string | undefined>();
   const [eventNotice, setEventNotice] = useState<string | undefined>();
   const [deleteTarget, setDeleteTarget] = useState<CalendarEvent | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategories, setSelectedCategories] = useState<CalendarEventCategory[]>([]);
+  const [searchState, setSearchState] = useState<CalendarSearchLoadState>({ status: 'idle' });
   const runtime = useMemo(() => buildCalendarRuntime(repository), [repository]);
 
   const cells = useMemo(
@@ -521,12 +744,45 @@ export function SharedCalendar({
   }, [queryKey, queryRange, relationship.couple.id, runtime]);
 
   const events = activeLoadState.status === 'ready' ? activeLoadState.events : emptyCalendarEvents;
-  const eventsByDate = useMemo(() => groupEventsByDate(events, timeZone), [events, timeZone]);
+  const searchFilters = useMemo(
+    () => ({
+      categories: selectedCategories,
+      query: searchQuery,
+    }),
+    [searchQuery, selectedCategories],
+  );
+  const hasActiveFilters = hasActiveCalendarFilters(searchFilters);
+  const searchQueryKey = useMemo(
+    () => [relationship.couple.id, searchQuery.trim(), selectedCategories.join(',')].join('|'),
+    [relationship.couple.id, searchQuery, selectedCategories],
+  );
+  const activeSearchState: CalendarSearchLoadState = !hasActiveFilters
+    ? { status: 'idle' }
+    : runtime.status === 'missing'
+      ? {
+          message: runtime.message,
+          queryKey: 'missing',
+          status: 'error',
+        }
+      : searchState.status !== 'idle' && searchState.queryKey === searchQueryKey
+        ? searchState
+        : {
+            queryKey: searchQueryKey,
+            status: 'loading',
+          };
+  const filteredEvents = useMemo(
+    () => filterCalendarEvents(events, searchFilters),
+    [events, searchFilters],
+  );
+  const eventsByDate = useMemo(
+    () => groupEventsByDate(filteredEvents, timeZone),
+    [filteredEvents, timeZone],
+  );
   const selectedEvents = eventsByDate.get(toDateKey(selectedDate)) ?? [];
   const heading = formatMonthHeading(visibleMonth);
   const activeEvent =
     eventPanel?.kind === 'details' || eventPanel?.kind === 'edit'
-      ? (events.find((event) => event.id === eventPanel.eventId) ?? null)
+      ? getPanelEvent(eventPanel.event, events)
       : null;
   const createFormInput = useMemo(
     () =>
@@ -536,6 +792,50 @@ export function SharedCalendar({
       }),
     [selectedDate, timeZone],
   );
+
+  useEffect(() => {
+    if (!hasActiveFilters || runtime.status === 'missing') {
+      return;
+    }
+
+    let isCurrent = true;
+
+    runtime.repository
+      .searchEventsForCouple({
+        categories: selectedCategories,
+        coupleId: relationship.couple.id,
+        query: searchQuery,
+      })
+      .then((searchEvents) => {
+        if (isCurrent) {
+          setSearchState({
+            events: searchEvents,
+            queryKey: searchQueryKey,
+            status: 'ready',
+          });
+        }
+      })
+      .catch((error: unknown) => {
+        if (isCurrent) {
+          setSearchState({
+            message: getSafeCalendarErrorMessage(error),
+            queryKey: searchQueryKey,
+            status: 'error',
+          });
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [
+    hasActiveFilters,
+    relationship.couple.id,
+    runtime,
+    searchQuery,
+    searchQueryKey,
+    selectedCategories,
+  ]);
 
   function moveSelectedMonth(months: number) {
     const nextSelectedDate = addCalendarMonths(selectedDate, months);
@@ -569,7 +869,10 @@ export function SharedCalendar({
       current.status === 'ready'
         ? {
             ...current,
-            events: current.events.filter((candidate) => candidate.id !== eventId),
+            events: current.events.filter(
+              (candidate) =>
+                candidate.id !== eventId && getOccurrenceSeriesId(candidate) !== eventId,
+            ),
           }
         : current,
     );
@@ -598,6 +901,18 @@ export function SharedCalendar({
     if (wasCreatePanel) {
       onCreateClosed?.();
     }
+  }
+
+  function clearSearchAndFilters() {
+    setSearchQuery('');
+    setSelectedCategories([]);
+    setSearchState({ status: 'idle' });
+  }
+
+  function openEventDetails(event: CalendarEvent) {
+    setEventError(undefined);
+    setEventNotice(undefined);
+    setEventPanel({ event, kind: 'details' });
   }
 
   async function handleCreateEvent(input: CalendarEventWritable) {
@@ -644,14 +959,14 @@ export function SharedCalendar({
       const updatedEvent = await runtime.repository.updateEvent({
         ...input,
         coupleId: relationship.couple.id,
-        eventId: event.id,
+        eventId: getOccurrenceSeriesId(event),
         expectedVersion: event.version,
       });
 
       upsertLoadedEvent(updatedEvent);
       selectEventDate(updatedEvent);
       refreshEvents();
-      setEventPanel({ eventId: updatedEvent.id, kind: 'details' });
+      setEventPanel({ event: updatedEvent, kind: 'details' });
       setEventNotice('Event updated.');
     } catch (error) {
       setEventError(getSafeCalendarErrorMessage(error));
@@ -673,11 +988,11 @@ export function SharedCalendar({
     try {
       await runtime.repository.deleteEvent({
         coupleId: relationship.couple.id,
-        eventId: event.id,
+        eventId: getOccurrenceSeriesId(event),
         expectedVersion: event.version,
       });
 
-      removeLoadedEvent(event.id);
+      removeLoadedEvent(getOccurrenceSeriesId(event));
       refreshEvents();
       setDeleteTarget(null);
       setEventPanel(null);
@@ -716,6 +1031,21 @@ export function SharedCalendar({
           <p>{eventError}</p>
         </StatusBanner>
       ) : null}
+
+      <SearchAndFilterPanel
+        categoryFilters={selectedCategories}
+        onCategoryToggle={(category) => {
+          setSelectedCategories((current) => toggleCategoryFilter(current, category));
+        }}
+        onClear={clearSearchAndFilters}
+        onQueryChange={setSearchQuery}
+        onResultOpen={(event) => {
+          selectEventDate(event);
+          openEventDetails(event);
+        }}
+        query={searchQuery}
+        searchState={activeSearchState}
+      />
 
       <div className="cc-calendar-toolbar" aria-label="Calendar navigation">
         <Button
@@ -789,14 +1119,11 @@ export function SharedCalendar({
       ) : null}
 
       <AgendaSection
+        hasActiveFilters={hasActiveFilters}
         events={selectedEvents}
         loadState={activeLoadState}
         members={relationship.members}
-        onEventOpen={(event) => {
-          setEventError(undefined);
-          setEventNotice(undefined);
-          setEventPanel({ eventId: event.id, kind: 'details' });
-        }}
+        onEventOpen={openEventDetails}
         onRetry={() => {
           refreshEvents();
         }}
@@ -812,7 +1139,9 @@ export function SharedCalendar({
           eventPanel?.kind === 'create'
             ? 'Create event'
             : eventPanel?.kind === 'edit'
-              ? 'Edit event'
+              ? activeEvent && isRecurringEvent(activeEvent)
+                ? 'Edit series'
+                : 'Edit event'
               : (activeEvent?.title ?? 'Event details')
         }
       >
@@ -839,7 +1168,7 @@ export function SharedCalendar({
             }}
             onEdit={(event) => {
               setEventError(undefined);
-              setEventPanel({ eventId: event.id, kind: 'edit' });
+              setEventPanel({ event, kind: 'edit' });
             }}
             timeZone={timeZone}
           />
@@ -853,7 +1182,7 @@ export function SharedCalendar({
             key={`edit-${activeEvent.id}-${String(activeEvent.version)}`}
             onCancel={() => {
               setEventError(undefined);
-              setEventPanel({ eventId: activeEvent.id, kind: 'details' });
+              setEventPanel({ event: activeEvent, kind: 'details' });
             }}
             onSubmit={(input) => {
               void handleUpdateEvent(activeEvent, input);
@@ -890,7 +1219,7 @@ export function SharedCalendar({
               }}
               variant="destructive"
             >
-              Delete event
+              {deleteTarget && isRecurringEvent(deleteTarget) ? 'Delete series' : 'Delete event'}
             </Button>
           </>
         }
@@ -898,9 +1227,13 @@ export function SharedCalendar({
           setDeleteTarget(null);
         }}
         open={deleteTarget !== null}
-        title="Delete event"
+        title={deleteTarget && isRecurringEvent(deleteTarget) ? 'Delete series' : 'Delete event'}
       >
-        <p>This removes the event from the shared calendar for both members.</p>
+        <p>
+          {deleteTarget && isRecurringEvent(deleteTarget)
+            ? 'This removes the repeating series from the shared calendar for both members.'
+            : 'This removes the event from the shared calendar for both members.'}
+        </p>
       </Dialog>
     </div>
   );

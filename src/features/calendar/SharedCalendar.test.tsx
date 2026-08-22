@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { CoupleMember, CoupleRelationship } from '../couples/coupleTypes';
@@ -7,6 +7,7 @@ import type {
   CalendarEvent,
   CalendarEventCreateInput,
   CalendarEventDeleteInput,
+  CalendarEventSearchQuery,
   CalendarEventUpdateInput,
   CalendarRepository,
 } from './calendarTypes';
@@ -43,6 +44,7 @@ function createEvent(
   input: Partial<CalendarEvent> & Pick<CalendarEvent, 'endsAt' | 'startsAt' | 'title'>,
 ): CalendarEvent {
   return {
+    category: input.category ?? 'personal',
     coupleId: input.coupleId ?? 'couple-1',
     createdAt: input.createdAt ?? '2026-08-01T00:00:00.000Z',
     createdBy: input.createdBy ?? 'user-1',
@@ -52,6 +54,8 @@ function createEvent(
     id: input.id ?? input.title,
     isAllDay: input.isAllDay ?? false,
     location: input.location ?? null,
+    recurrenceEndsAt: input.recurrenceEndsAt ?? null,
+    recurrenceRule: input.recurrenceRule ?? null,
     startsAt: input.startsAt,
     timeZone: input.timeZone ?? 'America/Chicago',
     title: input.title,
@@ -81,11 +85,31 @@ function createCalendarRepository(events: CalendarEvent[] = []): CalendarReposit
       return Promise.resolve(event);
     }),
     deleteEvent: vi.fn(({ eventId }: CalendarEventDeleteInput) => {
-      storedEvents = storedEvents.filter((event) => event.id !== eventId);
+      storedEvents = storedEvents.filter(
+        (event) => event.id !== eventId && event.seriesId !== eventId,
+      );
 
       return Promise.resolve();
     }),
     listEventsForCouple: vi.fn(() => Promise.resolve(storedEvents)),
+    searchEventsForCouple: vi.fn(({ categories, query }: CalendarEventSearchQuery) => {
+      const normalizedQuery = query.trim().toLowerCase();
+
+      return Promise.resolve(
+        storedEvents.filter((event) => {
+          const matchesCategory = categories.length === 0 || categories.includes(event.category);
+          const matchesQuery =
+            normalizedQuery.length === 0 ||
+            [event.title, event.description, event.location, event.category]
+              .filter(Boolean)
+              .join(' ')
+              .toLowerCase()
+              .includes(normalizedQuery);
+
+          return matchesCategory && matchesQuery;
+        }),
+      );
+    }),
     updateEvent: vi.fn((input: CalendarEventUpdateInput) => {
       const event = createEvent({
         ...input,
@@ -258,6 +282,85 @@ describe('SharedCalendar', () => {
     );
   });
 
+  it('creates a categorized recurring event from the event form', async () => {
+    const repository = createCalendarRepository();
+
+    renderCalendar(repository);
+    await screen.findByText('No shared events yet');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add event' }));
+    const form = await screen.findByRole('form', { name: 'Event form' });
+    fireEvent.change(within(form).getByLabelText(/Title/), {
+      target: { value: 'Weekly trip planning' },
+    });
+    fireEvent.change(within(form).getByLabelText(/Category/), {
+      target: { value: 'travel' },
+    });
+    fireEvent.change(within(form).getByLabelText('Repeat'), {
+      target: { value: 'weekly' },
+    });
+    fireEvent.change(within(form).getByLabelText('Repeat until'), {
+      target: { value: '2026-08-26' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: 'Create event' }));
+
+    await screen.findByText('Event created.');
+    expect(repository.createEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: 'travel',
+        recurrenceEndsAt: '2026-08-27T04:59:00.000Z',
+        recurrenceRule: 'FREQ=WEEKLY;INTERVAL=1;UNTIL=20260827T045900Z',
+        title: 'Weekly trip planning',
+      }),
+    );
+  });
+
+  it('filters the visible agenda by category and returns series once in search results', async () => {
+    const repository = createCalendarRepository([
+      createEvent({
+        category: 'date',
+        endsAt: '2026-08-12T23:00:00.000Z',
+        id: 'dinner',
+        location: 'Downtown',
+        startsAt: '2026-08-12T21:00:00.000Z',
+        title: 'Dinner',
+      }),
+      createEvent({
+        category: 'work',
+        description: 'Budget review',
+        endsAt: '2026-08-12T17:00:00.000Z',
+        id: 'planning',
+        recurrenceRule: 'FREQ=WEEKLY;INTERVAL=1',
+        startsAt: '2026-08-12T16:00:00.000Z',
+        title: 'Planning',
+      }),
+    ]);
+
+    renderCalendar(repository);
+
+    expect(await screen.findByRole('heading', { name: 'Dinner' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Planning' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Work' }));
+
+    expect(await screen.findByText('1 matching series')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Dinner' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Planning' })).toBeInTheDocument();
+    expect(repository.searchEventsForCouple).toHaveBeenCalledWith(
+      expect.objectContaining({
+        categories: ['work'],
+        coupleId: 'couple-1',
+      }),
+    );
+
+    fireEvent.change(screen.getByLabelText('Search events'), {
+      target: { value: 'budget' },
+    });
+
+    const resultList = await screen.findByLabelText('Search results');
+    expect(within(resultList).getAllByText('Planning')).toHaveLength(1);
+  });
+
   it('opens event details and saves edits with the loaded event version', async () => {
     const repository = createCalendarRepository([
       createEvent({
@@ -286,7 +389,9 @@ describe('SharedCalendar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
     expect(await screen.findByText('Event updated.')).toBeInTheDocument();
-    expect(await screen.findAllByText('New spot')).toHaveLength(2);
+    await waitFor(() => {
+      expect(screen.getAllByText('New spot')).toHaveLength(2);
+    });
     expect(repository.updateEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         coupleId: 'couple-1',

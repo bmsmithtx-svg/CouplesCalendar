@@ -237,6 +237,7 @@ function createCalendarRepository() {
   return {
     createEvent: vi.fn((input: CalendarEventCreateInput) =>
       Promise.resolve({
+        category: input.category,
         coupleId: input.coupleId,
         createdAt: '2026-08-12T16:00:00.000Z',
         createdBy: input.createdBy,
@@ -246,6 +247,8 @@ function createCalendarRepository() {
         id: 'created-event',
         isAllDay: input.isAllDay,
         location: input.location,
+        recurrenceEndsAt: input.recurrenceEndsAt,
+        recurrenceRule: input.recurrenceRule,
         startsAt: input.startsAt,
         timeZone: input.timeZone,
         title: input.title,
@@ -256,8 +259,10 @@ function createCalendarRepository() {
     ),
     deleteEvent: vi.fn(() => Promise.resolve()),
     listEventsForCouple: vi.fn(() => Promise.resolve([])),
+    searchEventsForCouple: vi.fn(() => Promise.resolve([])),
     updateEvent: vi.fn((input: CalendarEventUpdateInput) =>
       Promise.resolve({
+        category: input.category,
         coupleId: input.coupleId,
         createdAt: '2026-08-12T16:00:00.000Z',
         createdBy: 'user-1',
@@ -267,6 +272,8 @@ function createCalendarRepository() {
         id: input.eventId,
         isAllDay: input.isAllDay,
         location: input.location,
+        recurrenceEndsAt: input.recurrenceEndsAt,
+        recurrenceRule: input.recurrenceRule,
         startsAt: input.startsAt,
         timeZone: input.timeZone,
         title: input.title,

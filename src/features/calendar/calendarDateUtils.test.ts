@@ -14,6 +14,7 @@ function createEvent(
   input: Partial<CalendarEvent> & Pick<CalendarEvent, 'endsAt' | 'startsAt' | 'title'>,
 ): CalendarEvent {
   return {
+    category: input.category ?? 'personal',
     coupleId: input.coupleId ?? 'couple-1',
     createdAt: input.createdAt ?? '2026-08-01T00:00:00.000Z',
     createdBy: input.createdBy ?? 'user-1',
@@ -23,6 +24,8 @@ function createEvent(
     id: input.id ?? input.title,
     isAllDay: input.isAllDay ?? false,
     location: input.location ?? null,
+    recurrenceEndsAt: input.recurrenceEndsAt ?? null,
+    recurrenceRule: input.recurrenceRule ?? null,
     startsAt: input.startsAt,
     timeZone: input.timeZone ?? 'America/Chicago',
     title: input.title,

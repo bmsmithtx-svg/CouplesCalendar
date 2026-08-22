@@ -31,13 +31,15 @@ for active couple members.
 
 Milestone 6 is complete and live-verified. It adds all-day and timed event creation, details,
 editing, optimistic version checks, and soft deletion. Milestone 6 is awaiting owner review and
-approval before Milestone 7 may begin.
+approval.
 
-Milestone 7 is not started and is unauthorized until Milestone 6 is owner-reviewed and approved.
+Milestone 7 is complete and validated. It adds fixed event categories, category persistence,
+daily/weekly/monthly recurring series with optional end dates, timezone-aware visible-range
+occurrence expansion, series-wide recurring event edit/delete, search, and category filters.
 
-Recurrence, category management, search and filters, realtime collaboration, notifications, PWA
-installation behavior, external calendar synchronization, deployment functionality, and later AI
-scheduling features are not implemented yet.
+Custom category CRUD, per-occurrence recurrence overrides, reminder filters and notifications,
+realtime collaboration, PWA installation behavior, external calendar synchronization, deployment
+functionality, and later AI scheduling features are not implemented yet.
 
 ## Milestone 1 Contracts
 
@@ -47,6 +49,7 @@ scheduling features are not implemented yet.
 - [Security design](docs/SECURITY.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Milestone 2 acceptance notes](docs/MILESTONE_2_ACCEPTANCE.md)
+- [Milestone 7 acceptance notes](docs/MILESTONE_7_ACCEPTANCE.md)
 
 ## Prerequisites
 

@@ -5,6 +5,7 @@ export type Database = {
     Tables: {
       calendar_events: {
         Row: {
+          category: string;
           couple_id: string;
           created_at: string;
           created_by: string;
@@ -14,6 +15,8 @@ export type Database = {
           id: string;
           is_all_day: boolean;
           location: string | null;
+          recurrence_ends_at: string | null;
+          recurrence_rule: string | null;
           starts_at: string;
           status: string;
           timezone: string;
@@ -23,6 +26,7 @@ export type Database = {
           version: number;
         };
         Insert: {
+          category?: string;
           couple_id: string;
           created_at?: string;
           created_by: string;
@@ -32,6 +36,8 @@ export type Database = {
           id?: string;
           is_all_day?: boolean;
           location?: string | null;
+          recurrence_ends_at?: string | null;
+          recurrence_rule?: string | null;
           starts_at: string;
           status?: string;
           timezone?: string;
@@ -41,6 +47,7 @@ export type Database = {
           version?: number;
         };
         Update: {
+          category?: string;
           couple_id?: string;
           created_at?: string;
           created_by?: string;
@@ -50,6 +57,8 @@ export type Database = {
           id?: string;
           is_all_day?: boolean;
           location?: string | null;
+          recurrence_ends_at?: string | null;
+          recurrence_rule?: string | null;
           starts_at?: string;
           status?: string;
           timezone?: string;
